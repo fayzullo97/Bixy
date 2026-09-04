@@ -1,5 +1,5 @@
-import { TOPIC_LEVELS, type TopicLevel } from '../content/topic';
-import { FAMILY_PINS, type FamilyPin } from './pins';
+import { TOPIC_LEVELS, type TopicLevel } from '../content/topic.js';
+import { FAMILY_PINS, type FamilyPin } from './pins.js';
 
 // Computes a student's fixed study path once, right after the level check places
 // them (§8.12). Pure — no I/O — so the ordering rules are unit-tested directly.

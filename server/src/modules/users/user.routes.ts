@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import type { AppDeps } from '../../deps';
-import { requireAuth } from '../../middleware/requireAuth';
-import { toUserDto } from './user.dto';
-import { greetingVariant } from '../study-plan/greeting';
+import type { AppDeps } from '../../deps.js';
+import { requireAuth } from '../../middleware/requireAuth.js';
+import { toUserDto } from './user.dto.js';
+import { greetingVariant } from '../study-plan/greeting.js';
 
 export function userRoutes(deps: AppDeps): Router {
   const router = Router();

@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import type { AppDeps } from '../../deps';
-import { requireAuth } from '../../middleware/requireAuth';
-import { TOPIC_LEVELS } from '../content/topic';
+import type { AppDeps } from '../../deps.js';
+import { requireAuth } from '../../middleware/requireAuth.js';
+import { TOPIC_LEVELS } from '../content/topic.js';
 
 /**
  * Level check (§8.11). The adaptive algorithm itself runs client-side (a pure

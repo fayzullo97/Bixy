@@ -1,4 +1,4 @@
-import { TOPIC_LEVELS, type TopicLevel } from '../content/topic';
+import { TOPIC_LEVELS, type TopicLevel } from '../content/topic.js';
 
 // Pure helpers over a stored study plan (§8.12): which topic to serve next, how
 // far the position should advance, and the dashboard's level stats. Kept out of

@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { createSupabase } from '../db/supabase';
+import { createSupabase } from '../db/supabase.js';
 
 // DEV: delete result-cache rows so the next request regenerates from scratch
 // (§9.2). Needed after a prompt change, or to re-run generation with TTS now that

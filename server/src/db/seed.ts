@@ -2,18 +2,18 @@ import 'dotenv/config';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createSupabase } from './supabase';
-import { parseTopic } from '../modules/content/topic';
-import { parseDoodle, type DoodleRow } from '../modules/content/doodle';
-import { supabaseContentRepo } from '../modules/content/content.repo';
-import { parseLevelCheckQuestion } from '../modules/level-check/levelCheckQuestion';
-import { supabaseLevelCheckRepo } from '../modules/level-check/levelCheck.repo';
+import { createSupabase } from './supabase.js';
+import { parseTopic } from '../modules/content/topic.js';
+import { parseDoodle, type DoodleRow } from '../modules/content/doodle.js';
+import { supabaseContentRepo } from '../modules/content/content.repo.js';
+import { parseLevelCheckQuestion } from '../modules/level-check/levelCheckQuestion.js';
+import { supabaseLevelCheckRepo } from '../modules/level-check/levelCheck.repo.js';
 import {
   DOODLE_BUCKET,
   ensureDoodleBucket,
   publicSvgUrl,
   uploadSvg,
-} from '../modules/content/doodle-storage';
+} from '../modules/content/doodle-storage.js';
 
 // server/src/db/seed.ts → repo root is three levels up.
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');

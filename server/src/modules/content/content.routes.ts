@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import type { AppDeps } from '../../deps';
+import type { AppDeps } from '../../deps.js';
 
 export function contentRoutes(deps: AppDeps): Router {
   const router = Router();

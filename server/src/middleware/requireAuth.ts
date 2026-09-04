@@ -1,5 +1,5 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
-import type { Session } from '../modules/auth/session';
+import type { Session } from '../modules/auth/session.js';
 
 /**
  * Gate for authenticated routes. Expects `Authorization: Bearer <session>`,

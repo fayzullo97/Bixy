@@ -1,12 +1,12 @@
-import type { IdTokenVerifier } from './modules/auth/verifyIdToken';
-import type { Session } from './modules/auth/session';
-import type { UsersRepo } from './modules/users/users.repo';
-import type { ProgressRepo } from './modules/progress/progress.repo';
-import type { ContentRepo } from './modules/content/content.repo';
-import type { LessonService } from './modules/generation/pipeline';
-import type { AssessmentService } from './modules/assessment/assessment';
-import type { LevelCheckRepo } from './modules/level-check/levelCheck.repo';
-import type { StudyPlanService } from './modules/study-plan/studyPlan.service';
+import type { IdTokenVerifier } from './modules/auth/verifyIdToken.js';
+import type { Session } from './modules/auth/session.js';
+import type { UsersRepo } from './modules/users/users.repo.js';
+import type { ProgressRepo } from './modules/progress/progress.repo.js';
+import type { ContentRepo } from './modules/content/content.repo.js';
+import type { LessonService } from './modules/generation/pipeline.js';
+import type { AssessmentService } from './modules/assessment/assessment.js';
+import type { LevelCheckRepo } from './modules/level-check/levelCheck.repo.js';
+import type { StudyPlanService } from './modules/study-plan/studyPlan.service.js';
 
 /**
  * Everything the HTTP layer needs, injected at composition time. Real

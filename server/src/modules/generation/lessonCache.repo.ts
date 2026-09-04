@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { BoardScript } from './boardScript';
-import type { Language } from './systemPrompt';
+import type { BoardScript } from './boardScript.js';
+import type { Language } from './systemPrompt.js';
 
 export interface LessonCacheRepo {
   get(topicId: string, source: string, language: Language): Promise<BoardScript | null>;

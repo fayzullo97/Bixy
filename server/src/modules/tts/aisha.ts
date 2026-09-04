@@ -1,5 +1,5 @@
-import type { TtsClient } from './client';
-import { chunkByChars, concatWav, isPlausibleWav } from './wav';
+import type { TtsClient } from './client.js';
+import { chunkByChars, concatWav, isPlausibleWav } from './wav.js';
 
 // Aisha caps a single request at 1000 characters (verified live 2026-09-01:
 // 1001 chars → 400 transcript_too_long). Counted in characters, not bytes.

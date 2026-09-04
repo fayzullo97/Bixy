@@ -6,8 +6,8 @@
 // narration came back in English, or the documented Haiku slip of writing a
 // check-in in the narration language instead of English.
 
-import type { BoardScript, StoryBeat } from './boardScript';
-import type { Language } from './systemPrompt';
+import type { BoardScript, StoryBeat } from './boardScript.js';
+import type { Language } from './systemPrompt.js';
 
 const CYRILLIC = /[Ѐ-ӿ]/g;
 const LATIN = /[A-Za-z]/g;

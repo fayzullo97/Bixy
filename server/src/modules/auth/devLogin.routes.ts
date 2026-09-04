@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import type { AppDeps } from '../../deps';
-import { toUserDto } from '../users/user.dto';
-import type { AppLanguage } from '../users/users.repo';
+import type { AppDeps } from '../../deps.js';
+import { toUserDto } from '../users/user.dto.js';
+import type { AppLanguage } from '../users/users.repo.js';
 
 const LANGUAGES: readonly AppLanguage[] = ['en', 'uz', 'ru'];
 

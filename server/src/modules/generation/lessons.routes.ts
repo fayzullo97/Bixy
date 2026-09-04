@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import type { AppDeps } from '../../deps';
-import { requireAuth } from '../../middleware/requireAuth';
-import type { Language } from './systemPrompt';
+import type { AppDeps } from '../../deps.js';
+import { requireAuth } from '../../middleware/requireAuth.js';
+import type { Language } from './systemPrompt.js';
 
 const LANGUAGES: readonly Language[] = ['en', 'uz', 'ru'];
 

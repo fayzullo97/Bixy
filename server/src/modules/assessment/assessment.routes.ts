@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import type { AppDeps } from '../../deps';
-import { requireAuth } from '../../middleware/requireAuth';
-import type { FillInQuestion } from './grading';
+import type { AppDeps } from '../../deps.js';
+import { requireAuth } from '../../middleware/requireAuth.js';
+import type { FillInQuestion } from './grading.js';
 
 /** Pull a well-typed fill-in-the-blank grading request out of the body. */
 function parseGradeBody(body: unknown): { question: FillInQuestion; answer: string } | null {

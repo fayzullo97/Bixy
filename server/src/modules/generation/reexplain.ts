@@ -1,10 +1,10 @@
 import type Anthropic from '@anthropic-ai/sdk';
-import type { MessagesClient } from './anthropic';
-import { extractText, parseJsonLoose } from './generateLesson';
-import { parseBoardScript, type Beat } from './boardScript';
-import { scriptLanguageIssue } from './languageCheck';
-import type { Language } from './systemPrompt';
-import type { DoodleCatalogEntry, TopicOutline } from '../content/content.repo';
+import type { MessagesClient } from './anthropic.js';
+import { extractText, parseJsonLoose } from './generateLesson.js';
+import { parseBoardScript, type Beat } from './boardScript.js';
+import { scriptLanguageIssue } from './languageCheck.js';
+import type { Language } from './systemPrompt.js';
+import type { DoodleCatalogEntry, TopicOutline } from '../content/content.repo.js';
 
 const MAX_ATTEMPTS = 2;
 

@@ -1,19 +1,19 @@
-import { env } from './config/env';
-import { createApp } from './app';
-import { createSupabase } from './db/supabase';
-import { makeSession } from './modules/auth/session';
-import { makeIdTokenVerifier, telegramRemoteJwks } from './modules/auth/verifyIdToken';
-import { supabaseUsersRepo } from './modules/users/users.repo';
-import { supabaseProgressRepo } from './modules/progress/progress.repo';
-import { supabaseContentRepo } from './modules/content/content.repo';
-import { anthropic, MODELS } from './modules/generation/anthropic';
-import { supabaseLessonCacheRepo } from './modules/generation/lessonCache.repo';
-import { createLessonService } from './modules/generation/pipeline';
-import { createAssessmentService } from './modules/assessment/assessment';
-import { supabaseLevelCheckRepo } from './modules/level-check/levelCheck.repo';
-import { supabaseStudyPlanRepo } from './modules/study-plan/studyPlan.repo';
-import { createStudyPlanService } from './modules/study-plan/studyPlan.service';
-import { createAisha } from './modules/tts/aisha';
+import { env } from './config/env.js';
+import { createApp } from './app.js';
+import { createSupabase } from './db/supabase.js';
+import { makeSession } from './modules/auth/session.js';
+import { makeIdTokenVerifier, telegramRemoteJwks } from './modules/auth/verifyIdToken.js';
+import { supabaseUsersRepo } from './modules/users/users.repo.js';
+import { supabaseProgressRepo } from './modules/progress/progress.repo.js';
+import { supabaseContentRepo } from './modules/content/content.repo.js';
+import { anthropic, MODELS } from './modules/generation/anthropic.js';
+import { supabaseLessonCacheRepo } from './modules/generation/lessonCache.repo.js';
+import { createLessonService } from './modules/generation/pipeline.js';
+import { createAssessmentService } from './modules/assessment/assessment.js';
+import { supabaseLevelCheckRepo } from './modules/level-check/levelCheck.repo.js';
+import { supabaseStudyPlanRepo } from './modules/study-plan/studyPlan.repo.js';
+import { createStudyPlanService } from './modules/study-plan/studyPlan.service.js';
+import { createAisha } from './modules/tts/aisha.js';
 
 // Composition root: wire real implementations to the app's dependency contract.
 const db = createSupabase();

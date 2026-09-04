@@ -1,6 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk';
-import type { MessagesClient } from './anthropic';
-import type { TopicCatalogEntry } from '../content/content.repo';
+import type { MessagesClient } from './anthropic.js';
+import type { TopicCatalogEntry } from '../content/content.repo.js';
 
 export type IdentifyResult = { ok: true; topicId: string } | { ok: false };
 

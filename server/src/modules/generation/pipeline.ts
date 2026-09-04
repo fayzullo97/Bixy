@@ -1,15 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { MessagesClient } from './anthropic';
-import type { ContentRepo } from '../content/content.repo';
-import type { LessonCacheRepo } from './lessonCache.repo';
-import type { TtsClient } from '../tts/client';
-import type { BoardScript } from './boardScript';
-import type { Language } from './systemPrompt';
-import { generateLesson } from './generateLesson';
-import { generateReexplanation } from './reexplain';
-import { identifyTopicFromImage, identifyTopicFromText } from './identifyTopic';
-import { ensureNarrationBucket, uploadNarration } from '../tts/audioStore';
-import type { Beat } from './boardScript';
+import type { MessagesClient } from './anthropic.js';
+import type { ContentRepo } from '../content/content.repo.js';
+import type { LessonCacheRepo } from './lessonCache.repo.js';
+import type { TtsClient } from '../tts/client.js';
+import type { BoardScript } from './boardScript.js';
+import type { Language } from './systemPrompt.js';
+import { generateLesson } from './generateLesson.js';
+import { generateReexplanation } from './reexplain.js';
+import { identifyTopicFromImage, identifyTopicFromText } from './identifyTopic.js';
+import { ensureNarrationBucket, uploadNarration } from '../tts/audioStore.js';
+import type { Beat } from './boardScript.js';
 
 type ImageInput = { base64: string; mediaType: 'image/png' | 'image/jpeg' | 'image/webp' };
 

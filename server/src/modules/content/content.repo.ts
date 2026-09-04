@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { TopicInput } from './topic';
-import type { DoodleRow } from './doodle';
-import { publicSvgUrl } from './doodle-storage';
+import type { TopicInput } from './topic.js';
+import type { DoodleRow } from './doodle.js';
+import { publicSvgUrl } from './doodle-storage.js';
 
 function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];

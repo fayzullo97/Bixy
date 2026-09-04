@@ -1,8 +1,8 @@
-import type { ContentRepo } from '../content/content.repo';
-import type { ProgressRepo } from '../progress/progress.repo';
-import type { StudyPlanRepo, StudyPlanRecord } from './studyPlan.repo';
-import { buildStudyPlan } from './buildPlan';
-import { advancedPosition, currentTopicId, levelStats, asTopicLevel, type LevelStats } from './plan';
+import type { ContentRepo } from '../content/content.repo.js';
+import type { ProgressRepo } from '../progress/progress.repo.js';
+import type { StudyPlanRepo, StudyPlanRecord } from './studyPlan.repo.js';
+import { buildStudyPlan } from './buildPlan.js';
+import { advancedPosition, currentTopicId, levelStats, asTopicLevel, type LevelStats } from './plan.js';
 
 /** What the client needs to drive the path + dashboard (§8.12). */
 export interface StudyPlanView {

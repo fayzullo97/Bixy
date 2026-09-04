@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import type { AppDeps } from '../../deps';
-import { requireAuth } from '../../middleware/requireAuth';
+import type { AppDeps } from '../../deps.js';
+import { requireAuth } from '../../middleware/requireAuth.js';
 
 /**
  * Study plan (§8.12). The path is computed server-side when the level check

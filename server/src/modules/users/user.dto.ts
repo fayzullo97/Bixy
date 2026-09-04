@@ -1,4 +1,4 @@
-import type { UserRecord } from './users.repo';
+import type { UserRecord } from './users.repo.js';
 
 /** Shape sent to the client — snake_case DB columns mapped to camelCase. */
 export interface UserDto {

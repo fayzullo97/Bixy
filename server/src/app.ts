@@ -1,17 +1,17 @@
 import 'express-async-errors';
 import cors from 'cors';
 import express, { type Express } from 'express';
-import type { AppDeps } from './deps';
-import { errorHandler } from './middleware/errorHandler';
-import { authRoutes } from './modules/auth/auth.routes';
-import { devLoginRoutes } from './modules/auth/devLogin.routes';
-import { userRoutes } from './modules/users/user.routes';
-import { progressRoutes } from './modules/progress/progress.routes';
-import { contentRoutes } from './modules/content/content.routes';
-import { lessonsRoutes } from './modules/generation/lessons.routes';
-import { assessmentRoutes } from './modules/assessment/assessment.routes';
-import { levelCheckRoutes } from './modules/level-check/levelCheck.routes';
-import { studyPlanRoutes } from './modules/study-plan/studyPlan.routes';
+import type { AppDeps } from './deps.js';
+import { errorHandler } from './middleware/errorHandler.js';
+import { authRoutes } from './modules/auth/auth.routes.js';
+import { devLoginRoutes } from './modules/auth/devLogin.routes.js';
+import { userRoutes } from './modules/users/user.routes.js';
+import { progressRoutes } from './modules/progress/progress.routes.js';
+import { contentRoutes } from './modules/content/content.routes.js';
+import { lessonsRoutes } from './modules/generation/lessons.routes.js';
+import { assessmentRoutes } from './modules/assessment/assessment.routes.js';
+import { levelCheckRoutes } from './modules/level-check/levelCheck.routes.js';
+import { studyPlanRoutes } from './modules/study-plan/studyPlan.routes.js';
 
 /**
  * Builds the Express app from injected dependencies. No process globals, no DB

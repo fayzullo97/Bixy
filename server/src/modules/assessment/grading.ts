@@ -1,4 +1,4 @@
-import type { MessagesClient } from '../generation/anthropic';
+import type { MessagesClient } from '../generation/anthropic.js';
 
 // Fill-in-the-blank grading (§8.11), reused by both the end-of-topic quiz (§8.4)
 // and the level check (Phase 6). A fast deterministic pass first — normalize the

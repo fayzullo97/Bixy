@@ -1,8 +1,8 @@
 import 'dotenv/config';
-import { env } from '../config/env';
-import { createSupabase } from '../db/supabase';
-import { createAisha } from '../modules/tts/aisha';
-import { ensureNarrationBucket, uploadNarration } from '../modules/tts/audioStore';
+import { env } from '../config/env.js';
+import { createSupabase } from '../db/supabase.js';
+import { createAisha } from '../modules/tts/aisha.js';
+import { ensureNarrationBucket, uploadNarration } from '../modules/tts/audioStore.js';
 
 // Cheap live end-to-end check for the TTS wiring only (no Claude call): real
 // Aisha client → our narration bucket → our public URL, one short beat per

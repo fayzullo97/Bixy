@@ -1,5 +1,5 @@
-import type { DoodleCatalogEntry, TopicOutline } from '../content/content.repo';
-import { QUIZ_MAX, QUIZ_MIN } from './boardScript';
+import type { DoodleCatalogEntry, TopicOutline } from '../content/content.repo.js';
+import { QUIZ_MAX, QUIZ_MIN } from './boardScript.js';
 
 export type Language = 'en' | 'uz' | 'ru';
 

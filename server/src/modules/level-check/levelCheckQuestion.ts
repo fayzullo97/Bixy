@@ -1,4 +1,4 @@
-import { TOPIC_LEVELS, type TopicLevel } from '../content/topic';
+import { TOPIC_LEVELS, type TopicLevel } from '../content/topic.js';
 
 // One level-check question (§8.11), matching reference-material.json's
 // `level_check_questions[]` shape. Same six tiers as topics (§8.1), so the tier

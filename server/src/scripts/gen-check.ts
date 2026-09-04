@@ -1,14 +1,14 @@
 import 'dotenv/config';
-import { env } from '../config/env';
-import { createSupabase } from '../db/supabase';
-import { supabaseContentRepo } from '../modules/content/content.repo';
-import { anthropic, MODELS } from '../modules/generation/anthropic';
-import { generateLesson } from '../modules/generation/generateLesson';
-import { createAisha } from '../modules/tts/aisha';
-import { ensureNarrationBucket, uploadNarration } from '../modules/tts/audioStore';
-import { scriptLanguageIssue } from '../modules/generation/languageCheck';
-import { isPlausibleWav } from '../modules/tts/wav';
-import type { CheckInBeat, StoryBeat } from '../modules/generation/boardScript';
+import { env } from '../config/env.js';
+import { createSupabase } from '../db/supabase.js';
+import { supabaseContentRepo } from '../modules/content/content.repo.js';
+import { anthropic, MODELS } from '../modules/generation/anthropic.js';
+import { generateLesson } from '../modules/generation/generateLesson.js';
+import { createAisha } from '../modules/tts/aisha.js';
+import { ensureNarrationBucket, uploadNarration } from '../modules/tts/audioStore.js';
+import { scriptLanguageIssue } from '../modules/generation/languageCheck.js';
+import { isPlausibleWav } from '../modules/tts/wav.js';
+import type { CheckInBeat, StoryBeat } from '../modules/generation/boardScript.js';
 
 // Live end-to-end check for the generation pipeline (real Claude + Aisha TTS).
 // Usage: tsx src/scripts/gen-check.ts [topic_id] [language]

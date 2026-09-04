@@ -1,5 +1,5 @@
-import type { MessagesClient } from '../generation/anthropic';
-import { gradeFillIn, type FillInQuestion, type GradeResult } from './grading';
+import type { MessagesClient } from '../generation/anthropic.js';
+import { gradeFillIn, type FillInQuestion, type GradeResult } from './grading.js';
 
 /**
  * Grades fill-in-the-blank answers for the quiz (§8.4) and, later, the level

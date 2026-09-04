@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { LevelCheckQuestionInput } from './levelCheckQuestion';
+import type { LevelCheckQuestionInput } from './levelCheckQuestion.js';
 
 function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];

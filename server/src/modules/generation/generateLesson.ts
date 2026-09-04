@@ -1,9 +1,9 @@
 import type Anthropic from '@anthropic-ai/sdk';
-import type { MessagesClient } from './anthropic';
-import { buildSystemPrompt, buildUserPrompt, type Language } from './systemPrompt';
-import { parseBoardScript, type BoardScript } from './boardScript';
-import { scriptLanguageIssue } from './languageCheck';
-import type { DoodleCatalogEntry, TopicOutline } from '../content/content.repo';
+import type { MessagesClient } from './anthropic.js';
+import { buildSystemPrompt, buildUserPrompt, type Language } from './systemPrompt.js';
+import { parseBoardScript, type BoardScript } from './boardScript.js';
+import { scriptLanguageIssue } from './languageCheck.js';
+import type { DoodleCatalogEntry, TopicOutline } from '../content/content.repo.js';
 
 const MAX_ATTEMPTS = 3;
 

@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import type { AppDeps } from '../../deps';
-import { requireAuth } from '../../middleware/requireAuth';
-import type { ProgressPatch } from './progress.repo';
+import type { AppDeps } from '../../deps.js';
+import { requireAuth } from '../../middleware/requireAuth.js';
+import type { ProgressPatch } from './progress.repo.js';
 
 /** Pull only known, well-typed fields out of the request body. */
 function sanitizePatch(body: unknown): ProgressPatch | null {

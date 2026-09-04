@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { env } from '../../config/env';
+import { env } from '../../config/env.js';
 
 /** Ensures the public `narration` bucket exists (audio is non-sensitive; the client fetches by URL). */
 export async function ensureNarrationBucket(db: SupabaseClient): Promise<void> {
