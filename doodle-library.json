@@ -1,0 +1,142 @@
+[
+  {
+    "id": "person_a",
+    "name": "Person A",
+    "category": "people",
+    "description": "Generic standing figure, neutral pose. Base character for stories.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "person_b",
+    "name": "Person B",
+    "category": "people",
+    "description": "A second generic standing figure, visually distinct from Person A (e.g. different hair or height), for two-person dialogues and stories.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "person_sitting",
+    "name": "Person (sitting)",
+    "category": "people",
+    "description": "A generic figure in a sitting pose, for scenes at a desk, table, or on a bus.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "face_happy",
+    "name": "Happy face",
+    "category": "expressions",
+    "description": "A simple smiling expression, usable near a person or inside a speech/thought bubble.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "face_confused",
+    "name": "Confused face",
+    "category": "expressions",
+    "description": "A puzzled expression, useful for showing a mistake or misunderstanding.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "face_surprised",
+    "name": "Surprised face",
+    "category": "expressions",
+    "description": "A shocked or surprised expression.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "face_sad",
+    "name": "Sad face",
+    "category": "expressions",
+    "description": "A disappointed or unhappy expression.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "checkmark",
+    "name": "Checkmark",
+    "category": "symbols",
+    "description": "A simple check/tick mark, for showing something correct or completed.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "cross_mark",
+    "name": "Cross / X mark",
+    "category": "symbols",
+    "description": "A simple X mark, for showing something incorrect or not done.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "arrow",
+    "name": "Arrow",
+    "category": "symbols",
+    "description": "A single directional arrow, can be rotated or flipped, for sequence, cause-and-effect, or before/after.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "question_mark",
+    "name": "Question mark",
+    "category": "symbols",
+    "description": "A large question mark, for uncertainty, questions, or curiosity.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "exclamation_mark",
+    "name": "Exclamation mark",
+    "category": "symbols",
+    "description": "A large exclamation mark, for emphasis or surprise.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "speech_bubble",
+    "name": "Speech bubble",
+    "category": "communication",
+    "description": "An empty speech bubble for a person to 'say' something. Text or a small doodle can be placed inside it.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "thought_bubble",
+    "name": "Thought bubble",
+    "category": "communication",
+    "description": "An empty thought/cloud bubble for a person's internal thoughts.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "clock",
+    "name": "Clock",
+    "category": "objects",
+    "description": "A simple analogue clock face, for time, schedules, or duration.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "calendar",
+    "name": "Calendar",
+    "category": "objects",
+    "description": "A simple calendar page or grid, for dates, days, or future plans.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "house",
+    "name": "House",
+    "category": "objects",
+    "description": "A simple house outline, for home, locations, or stay/live scenarios.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "phone",
+    "name": "Phone",
+    "category": "objects",
+    "description": "A simple mobile phone, for calls, texting, or communication scenarios.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "suitcase",
+    "name": "Suitcase",
+    "category": "objects",
+    "description": "A simple suitcase, for travel, trips, or packing scenarios.",
+    "asset_status": "complete"
+  },
+  {
+    "id": "book",
+    "name": "Book",
+    "category": "objects",
+    "description": "A simple open or closed book, for study, reading, or learning scenarios.",
+    "asset_status": "complete"
+  }
+]
