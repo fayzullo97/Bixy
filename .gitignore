@@ -8,3 +8,5 @@ build/
 .expo/
 web-build/
 coverage/
+.vercel
+.env*

@@ -1,5 +1,5 @@
 import { env } from './config/env.js';
-import { createApp } from './app.js';
+import { createApp } from './createApp.js';
 import { createSupabase } from './db/supabase.js';
 import { makeSession } from './modules/auth/session.js';
 import { makeIdTokenVerifier, telegramRemoteJwks } from './modules/auth/verifyIdToken.js';

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
-import { createApp } from '../src/app';
+import { createApp } from '../src/createApp';
 import { makeSession } from '../src/modules/auth/session';
 import type { IdTokenVerifier } from '../src/modules/auth/verifyIdToken';
 import type { UpsertUserInput, UserRecord, UsersRepo } from '../src/modules/users/users.repo';
