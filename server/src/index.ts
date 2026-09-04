@@ -1,5 +1,6 @@
+import express from 'express';
 import { env } from './config/env.js';
-import { createApp } from './createApp.js';
+import { configureApp } from './createApp.js';
 import { createSupabase } from './db/supabase.js';
 import { makeSession } from './modules/auth/session.js';
 import { makeIdTokenVerifier, telegramRemoteJwks } from './modules/auth/verifyIdToken.js';
@@ -33,7 +34,7 @@ const lessons = createLessonService({
   db,
 });
 
-const app = createApp({
+const app = configureApp(express(), {
   corsOrigin: env.CORS_ORIGIN,
   verifyIdToken: makeIdTokenVerifier({
     jwks: telegramRemoteJwks(env.TELEGRAM_JWKS_URL),
@@ -51,6 +52,12 @@ const app = createApp({
   allowDevLogin: env.ALLOW_DEV_LOGIN,
 });
 
-app.listen(env.PORT, () => {
-  console.log(`Whiteboard AI Tutor server listening on http://localhost:${env.PORT}`);
-});
+// Vercel's Express preset serves this default export as the Function. Locally
+// (tsx / `npm run dev`), VERCEL is unset, so we start our own port listener instead.
+export default app;
+
+if (!process.env.VERCEL) {
+  app.listen(env.PORT, () => {
+    console.log(`Whiteboard AI Tutor server listening on http://localhost:${env.PORT}`);
+  });
+}

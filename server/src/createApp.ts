@@ -14,13 +14,13 @@ import { levelCheckRoutes } from './modules/level-check/levelCheck.routes.js';
 import { studyPlanRoutes } from './modules/study-plan/studyPlan.routes.js';
 
 /**
- * Builds the Express app from injected dependencies. No process globals, no DB
- * client created here — everything comes in via `deps`, which is what makes the
- * whole HTTP surface testable with fakes.
+ * Mounts middleware and routes onto an Express app from injected dependencies. No
+ * process globals, no DB client created here — everything comes in via `deps`, which
+ * is what makes the whole HTTP surface testable with fakes. The `app` is passed in so
+ * the Vercel entrypoint (src/index.ts) owns the `express()` call: Vercel's Express
+ * preset selects the entrypoint file by a *direct* `express` import (§ deploy).
  */
-export function createApp(deps: AppDeps): Express {
-  const app = express();
-
+export function configureApp(app: Express, deps: AppDeps): Express {
   app.use(cors({ origin: deps.corsOrigin }));
   // Headroom for a base64 photo attachment on /lessons/ask (§8.5). The client
   // downscales before upload, so this is a ceiling, not the expected size.
@@ -48,4 +48,9 @@ export function createApp(deps: AppDeps): Express {
 
   app.use(errorHandler);
   return app;
+}
+
+/** Convenience factory: a fresh Express app with everything mounted (used by tests). */
+export function createApp(deps: AppDeps): Express {
+  return configureApp(express(), deps);
 }
