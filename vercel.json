@@ -1,0 +1,22 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "builds": [
+    { "src": "server/src/index.ts", "use": "@vercel/node" },
+    {
+      "src": "app/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "dist" }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(health|auth|me|progress|content|lessons|assessment|level-check|study-plan)(/.*)?",
+      "dest": "/server/src/index.ts"
+    },
+    { "src": "/_expo/(.*)", "dest": "/app/_expo/$1" },
+    { "src": "/assets/(.*)", "dest": "/app/assets/$1" },
+    { "src": "/favicon.ico", "dest": "/app/favicon.ico" },
+    { "src": "/(.*)", "dest": "/app/index.html" }
+  ]
+}
