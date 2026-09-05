@@ -1,4 +1,4 @@
-import type { IdTokenVerifier } from './modules/auth/verifyIdToken.js';
+import type { InitDataVerifier } from './modules/auth/verifyInitData.js';
 import type { Session } from './modules/auth/session.js';
 import type { UsersRepo } from './modules/users/users.repo.js';
 import type { ProgressRepo } from './modules/progress/progress.repo.js';
@@ -15,7 +15,8 @@ import type { StudyPlanService } from './modules/study-plan/studyPlan.service.js
  */
 export interface AppDeps {
   corsOrigin: string;
-  verifyIdToken: IdTokenVerifier;
+  /** Validates a Telegram Mini App initData string; throws on tampering/expiry. */
+  verifyInitData: InitDataVerifier;
   session: Session;
   users: UsersRepo;
   progress: ProgressRepo;

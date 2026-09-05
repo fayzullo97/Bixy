@@ -97,8 +97,16 @@ export const api = {
     return ((await res.json()) as { user: UserDto }).user;
   },
 
-  telegramLogin(idToken: string, appLanguage: Lang): Promise<AuthResult> {
-    return postJson<AuthResult>('/auth/telegram', { id_token: idToken, app_language: appLanguage });
+  /**
+   * Exchange a verified Telegram Mini App `initData` string for a session (§8.8).
+   * `appLanguage` is optional — when omitted the server derives it from the
+   * Telegram user's language_code (or keeps a returning student's saved choice).
+   */
+  telegramLogin(initData: string, appLanguage?: Lang): Promise<AuthResult> {
+    return postJson<AuthResult>('/auth/telegram', {
+      init_data: initData,
+      ...(appLanguage ? { app_language: appLanguage } : {}),
+    });
   },
 
   /** DEV ONLY — bypasses Telegram, used for local runs until the URL is registered. */

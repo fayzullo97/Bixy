@@ -12,9 +12,11 @@ export const LANGUAGE_LABELS: Record<Lang, string> = {
 interface Strings {
   tagline: string;
   chooseLanguage: string;
-  loginWithTelegram: string;
   devLogin: string;
-  loginUnavailable: string;
+  // Shown when the app is opened outside Telegram (§8.8 Mini App).
+  openInTelegramTitle: string;
+  openInTelegramBody: string;
+  signingIn: string;
   greeting: (name: string) => string;
   boardPlaceholder: string;
   signOut: string;
@@ -37,7 +39,6 @@ interface Strings {
   lessonFailed: string;
   noContent: string;
   tryAgain: string;
-  loginCancelled: string;
   loginFailed: string;
   planLoadFailed: string;
   // The single input (§8.5).
@@ -57,10 +58,11 @@ export const strings: Record<Lang, Strings> = {
   en: {
     tagline: 'Learn English grammar on a live whiteboard.',
     chooseLanguage: 'Choose your language',
-    loginWithTelegram: 'Log in with Telegram',
     devLogin: 'Dev sign-in (local only)',
-    loginUnavailable:
-      'Telegram login isn’t available yet — the app URL still needs to be registered with BotFather.',
+    openInTelegramTitle: 'Open this app in Telegram',
+    openInTelegramBody:
+      'This app runs inside Telegram. Open it from the bot in Telegram to start learning.',
+    signingIn: 'Signing you in…',
     greeting: (name) => `Hi, ${name} 👋`,
     boardPlaceholder: 'Your whiteboard will appear here.',
     signOut: 'Sign out',
@@ -81,7 +83,6 @@ export const strings: Record<Lang, Strings> = {
     lessonFailed: 'Something went wrong preparing your lesson. Please try again.',
     noContent: 'I don’t have a lesson for that yet. Please try again.',
     tryAgain: 'Try again',
-    loginCancelled: 'Sign-in was cancelled. Please try again.',
     loginFailed: 'Couldn’t sign you in. Please try again.',
     planLoadFailed: 'Couldn’t load your plan. Please try again.',
     inputPlaceholder: 'Ask for a topic, or about this lesson…',
@@ -96,10 +97,11 @@ export const strings: Record<Lang, Strings> = {
   uz: {
     tagline: 'Ingliz tili grammatikasini jonli doskada o‘rganing.',
     chooseLanguage: 'Tilni tanlang',
-    loginWithTelegram: 'Telegram orqali kirish',
     devLogin: 'Dev kirish (faqat lokal)',
-    loginUnavailable:
-      'Telegram orqali kirish hozircha mavjud emas — ilova manzili BotFatherda ro‘yxatdan o‘tishi kerak.',
+    openInTelegramTitle: 'Ilovani Telegramda oching',
+    openInTelegramBody:
+      'Bu ilova Telegram ichida ishlaydi. O‘rganishni boshlash uchun uni Telegramdagi botdan oching.',
+    signingIn: 'Tizimga kiritilmoqda…',
     greeting: (name) => `Salom, ${name} 👋`,
     boardPlaceholder: 'Doskangiz shu yerda paydo bo‘ladi.',
     signOut: 'Chiqish',
@@ -120,7 +122,6 @@ export const strings: Record<Lang, Strings> = {
     lessonFailed: 'Darsni tayyorlashda xatolik yuz berdi. Iltimos, qayta urinib ko‘ring.',
     noContent: 'Bu bo‘yicha hozircha darsim yo‘q. Iltimos, qayta urinib ko‘ring.',
     tryAgain: 'Qayta urinib ko‘rish',
-    loginCancelled: 'Kirish bekor qilindi. Iltimos, qayta urinib ko‘ring.',
     loginFailed: 'Kirib bo‘lmadi. Iltimos, qayta urinib ko‘ring.',
     planLoadFailed: 'Rejangizni yuklab bo‘lmadi. Iltimos, qayta urinib ko‘ring.',
     inputPlaceholder: 'Mavzu so‘rang yoki shu dars haqida so‘rang…',
@@ -135,10 +136,11 @@ export const strings: Record<Lang, Strings> = {
   ru: {
     tagline: 'Изучайте английскую грамматику на живой доске.',
     chooseLanguage: 'Выберите язык',
-    loginWithTelegram: 'Войти через Telegram',
     devLogin: 'Dev-вход (только локально)',
-    loginUnavailable:
-      'Вход через Telegram пока недоступен — URL приложения нужно зарегистрировать в BotFather.',
+    openInTelegramTitle: 'Откройте приложение в Telegram',
+    openInTelegramBody:
+      'Это приложение работает внутри Telegram. Откройте его через бота в Telegram, чтобы начать.',
+    signingIn: 'Выполняется вход…',
     greeting: (name) => `Привет, ${name} 👋`,
     boardPlaceholder: 'Здесь появится ваша доска.',
     signOut: 'Выйти',
@@ -159,7 +161,6 @@ export const strings: Record<Lang, Strings> = {
     lessonFailed: 'При подготовке урока произошла ошибка. Пожалуйста, попробуйте ещё раз.',
     noContent: 'У меня пока нет урока по этой теме. Пожалуйста, попробуйте ещё раз.',
     tryAgain: 'Попробовать снова',
-    loginCancelled: 'Вход отменён. Пожалуйста, попробуйте ещё раз.',
     loginFailed: 'Не удалось выполнить вход. Пожалуйста, попробуйте ещё раз.',
     planLoadFailed: 'Не удалось загрузить ваш план. Пожалуйста, попробуйте ещё раз.',
     inputPlaceholder: 'Спросите тему или задайте вопрос об уроке…',

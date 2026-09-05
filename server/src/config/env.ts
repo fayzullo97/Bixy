@@ -17,12 +17,12 @@ export const env = {
   SESSION_SECRET: required('SESSION_SECRET'),
   SESSION_TTL_DAYS: Number(process.env.SESSION_TTL_DAYS ?? 30),
 
-  // Telegram Login is an OIDC provider: the id_token audience is the numeric Bot ID,
-  // the issuer is https://oauth.telegram.org, and keys come from the JWKS endpoint.
-  TELEGRAM_BOT_ID: required('TELEGRAM_BOT_ID'),
-  TELEGRAM_ISSUER: process.env.TELEGRAM_ISSUER ?? 'https://oauth.telegram.org',
-  TELEGRAM_JWKS_URL:
-    process.env.TELEGRAM_JWKS_URL ?? 'https://oauth.telegram.org/.well-known/jwks.json',
+  // Telegram Mini App auth: `initData` is signed with the bot token, so that's the
+  // one secret we need to verify identity (Telegram's Mini App auth spec). No Bot
+  // ID / issuer / JWKS anymore — those belonged to the retired Login Widget (OIDC).
+  TELEGRAM_BOT_TOKEN: required('TELEGRAM_BOT_TOKEN'),
+  // Reject initData older than this (seconds) as a replay guard. 24h default.
+  TELEGRAM_INITDATA_MAX_AGE_SEC: Number(process.env.TELEGRAM_INITDATA_MAX_AGE_SEC ?? 86400),
 
   SUPABASE_URL: required('SUPABASE_URL'),
   SUPABASE_SERVICE_ROLE_KEY: required('SUPABASE_SERVICE_ROLE_KEY'),

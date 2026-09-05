@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/createApp';
 import { makeSession } from '../src/modules/auth/session';
-import type { IdTokenVerifier } from '../src/modules/auth/verifyIdToken';
+import type { InitDataVerifier } from '../src/modules/auth/verifyInitData';
 import type { UpsertUserInput, UserRecord, UsersRepo } from '../src/modules/users/users.repo';
 import type {
   ProgressPatch,
@@ -75,11 +75,17 @@ function fakeProgressRepo() {
   return { repo, store };
 }
 
-const verifyIdToken: IdTokenVerifier = async (idToken: string) => {
-  if (idToken === 'valid-token') {
-    return { telegramId: '42', name: 'Test Student', username: 'test', photoUrl: null };
+const verifyInitData: InitDataVerifier = async (initData: string) => {
+  if (initData === 'valid-init-data') {
+    return {
+      telegramId: '42',
+      name: 'Test Student',
+      username: 'test',
+      photoUrl: null,
+      languageCode: 'ru',
+    };
   }
-  throw new Error('invalid token');
+  throw new Error('invalid init data');
 };
 
 const fakeContent: ContentRepo = {
@@ -221,7 +227,7 @@ function buildApp() {
   const session = makeSession({ secret: 'test-secret-please-ignore', ttlDays: 30 });
   const app = createApp({
     corsOrigin: '*',
-    verifyIdToken,
+    verifyInitData,
     session,
     users: users.repo,
     progress: progress.repo,
@@ -241,14 +247,14 @@ function buildApp() {
 async function signIn(app: ReturnType<typeof buildApp>['app'], language = 'uz') {
   const res = await request(app)
     .post('/auth/telegram')
-    .send({ id_token: 'valid-token', app_language: language });
+    .send({ init_data: 'valid-init-data', app_language: language });
   return res;
 }
 
 // ---- Tests -------------------------------------------------------------------
 
 describe('POST /auth/telegram', () => {
-  it('validates the id_token, creates the user, and returns a session', async () => {
+  it('validates the initData, creates the user, and returns a session', async () => {
     const { app, users } = buildApp();
     const res = await signIn(app, 'uz');
 
@@ -263,19 +269,43 @@ describe('POST /auth/telegram', () => {
     expect(users.store.get('42')).toBeDefined();
   });
 
-  it('rejects an invalid id_token with 401', async () => {
+  it('derives the app language from Telegram when none is provided', async () => {
+    const { app } = buildApp();
+    // The fake verifier reports languageCode 'ru' for a new user.
+    const res = await request(app).post('/auth/telegram').send({ init_data: 'valid-init-data' });
+    expect(res.status).toBe(200);
+    expect(res.body.user.appLanguage).toBe('ru');
+  });
+
+  it('preserves a returning student’s saved language over a new request', async () => {
+    const { app } = buildApp();
+    // First sign-in picks 'uz' explicitly.
+    await signIn(app, 'uz');
+    // A later sign-in with no language must NOT reset it to the derived 'ru'.
+    const res = await request(app).post('/auth/telegram').send({ init_data: 'valid-init-data' });
+    expect(res.status).toBe(200);
+    expect(res.body.user.appLanguage).toBe('uz');
+  });
+
+  it('rejects invalid initData with 401', async () => {
     const { app } = buildApp();
     const res = await request(app)
       .post('/auth/telegram')
-      .send({ id_token: 'forged', app_language: 'en' });
+      .send({ init_data: 'forged', app_language: 'en' });
     expect(res.status).toBe(401);
   });
 
-  it('requires a valid app_language', async () => {
+  it('requires an init_data string', async () => {
+    const { app } = buildApp();
+    const res = await request(app).post('/auth/telegram').send({ app_language: 'en' });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects an explicitly invalid app_language', async () => {
     const { app } = buildApp();
     const res = await request(app)
       .post('/auth/telegram')
-      .send({ id_token: 'valid-token', app_language: 'fr' });
+      .send({ init_data: 'valid-init-data', app_language: 'fr' });
     expect(res.status).toBe(400);
   });
 });

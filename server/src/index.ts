@@ -3,7 +3,7 @@ import { env } from './config/env.js';
 import { configureApp } from './createApp.js';
 import { createSupabase } from './db/supabase.js';
 import { makeSession } from './modules/auth/session.js';
-import { makeIdTokenVerifier, telegramRemoteJwks } from './modules/auth/verifyIdToken.js';
+import { makeInitDataVerifier } from './modules/auth/verifyInitData.js';
 import { supabaseUsersRepo } from './modules/users/users.repo.js';
 import { supabaseProgressRepo } from './modules/progress/progress.repo.js';
 import { supabaseContentRepo } from './modules/content/content.repo.js';
@@ -36,10 +36,9 @@ const lessons = createLessonService({
 
 const app = configureApp(express(), {
   corsOrigin: env.CORS_ORIGIN,
-  verifyIdToken: makeIdTokenVerifier({
-    jwks: telegramRemoteJwks(env.TELEGRAM_JWKS_URL),
-    issuer: env.TELEGRAM_ISSUER,
-    audience: env.TELEGRAM_BOT_ID,
+  verifyInitData: makeInitDataVerifier({
+    botToken: env.TELEGRAM_BOT_TOKEN,
+    maxAgeSeconds: env.TELEGRAM_INITDATA_MAX_AGE_SEC,
   }),
   session: makeSession({ secret: env.SESSION_SECRET, ttlDays: env.SESSION_TTL_DAYS }),
   users: supabaseUsersRepo(db),

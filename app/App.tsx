@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
-import { SignInScreen } from './src/screens/SignInScreen';
+import { OpenInTelegramScreen } from './src/screens/OpenInTelegramScreen';
 import { SignedInApp } from './src/screens/SignedInApp';
 import { DevBoardScreen } from './src/screens/DevBoardScreen';
 import { DevLevelCheckScreen } from './src/screens/DevLevelCheckScreen';
@@ -84,6 +84,9 @@ function DevTapToStart({ children }: { children: ReactNode }) {
 
 function Root() {
   const { status } = useAuth();
+  // `loading` covers both restoring a saved session and the silent Mini App
+  // auto-login (§8.8) — a spinner, no login form. `needsTelegram`/`error` fall to
+  // the "open in Telegram" screen (which also offers a retry / the dev seam).
   if (status === 'loading') {
     return (
       <View style={styles.centered}>
@@ -91,7 +94,7 @@ function Root() {
       </View>
     );
   }
-  return status === 'signedIn' ? <SignedInApp /> : <SignInScreen />;
+  return status === 'signedIn' ? <SignedInApp /> : <OpenInTelegramScreen />;
 }
 
 export default function App() {
