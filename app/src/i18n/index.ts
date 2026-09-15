@@ -21,6 +21,17 @@ interface Strings {
   boardPlaceholder: string;
   signOut: string;
   loading: string;
+  // The first meeting (Part 05 §7). `meetIntro` is Bixy introducing itself;
+  // the five questions follow, each individually skippable.
+  meetIntro: string;
+  meetOffer: string;
+  meetStart: string;
+  meetSkipAll: string;
+  meetSkip: string;
+  meetNext: string;
+  meetDone: string;
+  meetPlaceholder: string;
+  meetQuestions: Record<'occupation' | 'study_place' | 'hobbies' | 'interests' | 'motivation', string>;
   // Study plan & dashboard (§8.12).
   welcomeBack: (name: string) => string;
   dashboardStat: (completed: number, total: number, level: string) => string;
@@ -67,6 +78,22 @@ export const strings: Record<Lang, Strings> = {
     boardPlaceholder: 'Your whiteboard will appear here.',
     signOut: 'Sign out',
     loading: 'Loading…',
+    meetIntro:
+      'Hi — I’m Bixy. I teach English grammar on this board: I’ll write, draw and talk you through a topic, and you can stop me any time to ask about it again.',
+    meetOffer: 'Before we start, tell me a little about yourself — so I can explain things in a way that fits you.',
+    meetStart: 'Sure, ask away',
+    meetSkipAll: 'Skip for now',
+    meetSkip: 'Skip',
+    meetNext: 'Next',
+    meetDone: 'Done',
+    meetPlaceholder: 'Type your answer…',
+    meetQuestions: {
+      occupation: 'What do you do — work, study, something else?',
+      study_place: 'Where do you usually study?',
+      hobbies: 'What do you do for fun?',
+      interests: 'Anything you’re really into at the moment?',
+      motivation: 'And why are you learning English?',
+    },
     welcomeBack: (name) => `Welcome back, ${name} 👋`,
     dashboardStat: (completed, total, level) => `${completed} of ${total} ${level} topics done`,
     dashboardStart: 'Continue on the board',
@@ -106,6 +133,22 @@ export const strings: Record<Lang, Strings> = {
     boardPlaceholder: 'Doskangiz shu yerda paydo bo‘ladi.',
     signOut: 'Chiqish',
     loading: 'Yuklanmoqda…',
+    meetIntro:
+      'Salom — men Bixy. Shu doskada ingliz tili grammatikasini o‘rgataman: mavzuni yozib, chizib va gapirib tushuntiraman, siz esa istagan payt to‘xtatib, qayta so‘rashingiz mumkin.',
+    meetOffer: 'Boshlashdan oldin o‘zingiz haqingizda biroz aytib bering — tushuntirishlarimni sizga moslashtiraman.',
+    meetStart: 'Mayli, so‘rang',
+    meetSkipAll: 'Hozircha o‘tkazib yuborish',
+    meetSkip: 'O‘tkazib yuborish',
+    meetNext: 'Keyingisi',
+    meetDone: 'Tayyor',
+    meetPlaceholder: 'Javobingizni yozing…',
+    meetQuestions: {
+      occupation: 'Nima bilan shug‘ullanasiz — ishlaysizmi, o‘qiysizmi?',
+      study_place: 'Odatda qayerda shug‘ullanasiz?',
+      hobbies: 'Bo‘sh vaqtingizda nima qilasiz?',
+      interests: 'Hozir sizni nima juda qiziqtiryapti?',
+      motivation: 'Ingliz tilini nima uchun o‘rganyapsiz?',
+    },
     welcomeBack: (name) => `Xush kelibsiz, ${name} 👋`,
     dashboardStat: (completed, total, level) => `${level} darajasida ${total} tadan ${completed} ta mavzu tugallandi`,
     dashboardStart: 'Doskada davom etish',
@@ -145,6 +188,22 @@ export const strings: Record<Lang, Strings> = {
     boardPlaceholder: 'Здесь появится ваша доска.',
     signOut: 'Выйти',
     loading: 'Загрузка…',
+    meetIntro:
+      'Привет — я Бикси. Я объясняю английскую грамматику на этой доске: пишу, рисую и рассказываю, а вы в любой момент можете остановить меня и спросить ещё раз.',
+    meetOffer: 'Прежде чем начать, расскажите немного о себе — так я смогу объяснять понятнее именно для вас.',
+    meetStart: 'Хорошо, спрашивайте',
+    meetSkipAll: 'Пропустить пока',
+    meetSkip: 'Пропустить',
+    meetNext: 'Дальше',
+    meetDone: 'Готово',
+    meetPlaceholder: 'Напишите ответ…',
+    meetQuestions: {
+      occupation: 'Чем вы занимаетесь — работаете, учитесь?',
+      study_place: 'Где вы обычно занимаетесь?',
+      hobbies: 'Чем любите заниматься в свободное время?',
+      interests: 'Что вас сейчас особенно увлекает?',
+      motivation: 'И почему вы учите английский?',
+    },
     welcomeBack: (name) => `С возвращением, ${name} 👋`,
     dashboardStat: (completed, total, level) => `Пройдено ${completed} из ${total} тем уровня ${level}`,
     dashboardStart: 'Продолжить на доске',

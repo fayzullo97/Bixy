@@ -2,11 +2,41 @@ import { Router } from 'express';
 import type { AppDeps } from '../../deps.js';
 import { requireAuth } from '../../middleware/requireAuth.js';
 import type { Language } from './systemPrompt.js';
+import { isPatient, type PersonaContext } from './persona.js';
 
 const LANGUAGES: readonly Language[] = ['en', 'uz', 'ru'];
 
 function isLanguage(value: unknown): value is Language {
   return typeof value === 'string' && (LANGUAGES as readonly string[]).includes(value);
+}
+
+/**
+ * The per-student persona inputs for one request (Part 05 §8): what the student
+ * told Bixy when they met, and whether they've struggled enough on THIS topic to
+ * earn the patient register.
+ *
+ * Assembled in the route, from the student's own stored rows — never from the
+ * request body. Patience is a tone a student earns by failing; a client that
+ * could ask for it could also ask for it on behalf of someone breezing through.
+ *
+ * Best-effort: a failed lookup yields the default persona rather than failing the
+ * lesson. Tone is an enhancement; the lesson is the product.
+ */
+async function personaFor(deps: AppDeps, telegramId: string, topicId: string | null): Promise<PersonaContext> {
+  try {
+    const [user, progress] = await Promise.all([
+      deps.users.get(telegramId),
+      topicId ? deps.progress.listForUser(telegramId) : Promise.resolve([]),
+    ]);
+    const record = topicId ? progress.find((p) => p.topic_id === topicId) : undefined;
+    return {
+      patient: isPatient(record?.reteach_all_streak ?? 0),
+      profile: user?.student_profile ?? {},
+    };
+  } catch (error) {
+    console.error('[persona] lookup failed:', (error as Error).message);
+    return { patient: false, profile: {} };
+  }
 }
 
 export function lessonsRoutes(deps: AppDeps): Router {
@@ -24,12 +54,16 @@ export function lessonsRoutes(deps: AppDeps): Router {
       return;
     }
 
+    const topicId = typeof body.topic_id === 'string' ? body.topic_id : undefined;
     const result = await deps.lessons.getLesson({
-      topicId: typeof body.topic_id === 'string' ? body.topic_id : undefined,
+      topicId,
       text: typeof body.text === 'string' ? body.text : undefined,
       image: body.image,
       language: body.language,
       source: typeof body.source === 'string' ? body.source : undefined,
+      // Keyed on the requested topic — the only one whose struggle history is
+      // knowable before the pipeline resolves free text to an id.
+      persona: await personaFor(deps, req.telegramId!, topicId ?? null),
     });
 
     if (!result.ok) {
@@ -55,18 +89,22 @@ export function lessonsRoutes(deps: AppDeps): Router {
       return;
     }
 
+    const currentTopicId = typeof body.current_topic_id === 'string' ? body.current_topic_id : null;
     const result = await deps.lessons.ask({
       text: typeof body.text === 'string' ? body.text : undefined,
       image: body.image,
       language: body.language,
-      currentTopicId: typeof body.current_topic_id === 'string' ? body.current_topic_id : null,
+      currentTopicId,
       source: typeof body.source === 'string' ? body.source : undefined,
+      persona: await personaFor(deps, req.telegramId!, currentTopicId),
     });
 
     if (result.kind === 'lesson') {
       res.json({ kind: 'lesson', topic_id: result.topicId, board_script: result.boardScript, cached: result.cached });
     } else if (result.kind === 'reexplain') {
       res.json({ kind: 'reexplain', beats: result.beats });
+    } else if (result.kind === 'identity') {
+      res.json({ kind: 'identity', text: result.text });
     } else {
       res.json({ kind: 'no_content' });
     }

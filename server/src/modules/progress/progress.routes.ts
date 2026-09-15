@@ -29,9 +29,9 @@ function sanitizePatch(body: unknown): ProgressPatch | null {
     if (typeof b.retest_round !== 'number' || b.retest_round < 0) return null;
     patch.retest_round = b.retest_round;
   }
-  // `missed_fingerprints` is deliberately NOT accepted from the client — it's
-  // derived server-side from `missed_quiz_question_ids` (see the route), so a
-  // client can't hand itself an easier retest by naming its own set.
+  // `missed_fingerprints` and `reteach_all_streak` are deliberately NOT accepted
+  // from the client — both are derived server-side (see the route), so a client
+  // can't hand itself an easier retest or talk Bixy into its patient register.
   return patch;
 }
 
@@ -43,6 +43,23 @@ function missedIds(body: unknown): { ids: number[]; language: string } | null {
   if (!Array.isArray(b.missed_quiz_question_ids)) return null;
   const ids = b.missed_quiz_question_ids.filter((n): n is number => typeof n === 'number');
   return { ids, language: typeof b.language === 'string' ? b.language : 'en' };
+}
+
+/**
+ * The re-teach streak driving the persona tone shift (Part 05 §8), recomputed
+ * from the score the student just posted.
+ *
+ * Counted on the SCORE, not on the re-teach the board decided to run: §6's
+ * second-miss rule also forces a whole-topic re-teach at 50-79%, and those
+ * aren't the "below 50%" struggle this trigger is defined against. A pass clears
+ * it, so a topic failed again months later starts from zero rather than
+ * inheriting a long-resolved streak — the same reasoning §6 applies to
+ * `retest_round`.
+ */
+export function nextReteachStreak(previous: number, scorePct: number): number {
+  if (scorePct >= 80) return 0;
+  if (scorePct < 50) return previous + 1;
+  return previous;
 }
 
 export function progressRoutes(deps: AppDeps): Router {
@@ -62,6 +79,17 @@ export function progressRoutes(deps: AppDeps): Router {
     if (patch === null) {
       res.status(400).json({ error: 'invalid progress fields' });
       return;
+    }
+    // A reported score moves the tone-shift streak (Part 05 §8). Read the
+    // previous value here rather than taking one from the client.
+    if (typeof patch.quiz_score === 'number') {
+      const previous = (await deps.progress.listForUser(req.telegramId!)).find(
+        (p) => p.topic_id === req.params.topicId,
+      );
+      patch.reteach_all_streak = nextReteachStreak(
+        previous?.reteach_all_streak ?? 0,
+        patch.quiz_score,
+      );
     }
     // A reported quiz result carries which questions were missed; resolve them
     // to durable fingerprints here rather than trusting client-supplied hashes.

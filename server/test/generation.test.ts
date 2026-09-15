@@ -468,6 +468,53 @@ describe('pipeline result cache', () => {
     expect(calls).toHaveLength(1); // generated once, not three times
   });
 
+  it('never reads or writes the shared cache for a patient re-teach (Part 05 §8)', async () => {
+    // The cache key carries no student, so a lesson written for ONE struggling
+    // student must not land in it — nor may the row that already failed to land
+    // be served back to them instead of a fresh attempt.
+    const store = new Map<string, BoardScript>();
+    const reads: string[] = [];
+    const cache: LessonCacheRepo = {
+      get: async (t, src, l) => {
+        reads.push(`${t}:${src}:${l}`);
+        return store.get(`${t}:${src}:${l}`) ?? null;
+      },
+      put: async (t, src, l, script) => void store.set(`${t}:${src}:${l}`, script),
+    };
+    const { client, calls } = mockAnthropic([JSON.stringify(validScript)]);
+    const service = makeService({ client, cache });
+
+    // Seed the cache with an ordinary run first.
+    await service.getLesson({ topicId: topic.topic_id, language: 'uz' });
+    expect(store.size).toBe(1);
+
+    const patient = { patient: true, profile: { occupation: 'nurse' } };
+    const result = await service.getLesson({ topicId: topic.topic_id, language: 'uz', persona: patient });
+
+    expect(result).toMatchObject({ ok: true, cached: false });
+    expect(reads).toHaveLength(1); // the seeding run only — the re-teach never looked
+    expect(store.size).toBe(1); // and never wrote its personalized script back
+    expect(calls).toHaveLength(2);
+
+    // The fragment rode the per-request message, never the cached system block.
+    const params = calls[1] as { system: Array<{ text: string }>; messages: Array<{ content: string }> };
+    expect(params.messages[0]?.content).toContain('patient register');
+    expect(params.messages[0]?.content).toContain('nurse');
+    expect(params.system[0]?.text).not.toContain('nurse');
+  });
+
+  it('leaves caching untouched for a student who is not in patience mode (Part 05 §8)', async () => {
+    // A stored profile alone must not take a student off the shared cache — that
+    // would turn every lesson into a fresh generation for flavour.
+    const { client, calls } = mockAnthropic([JSON.stringify(validScript)]);
+    const service = makeService({ client });
+    const persona = { patient: false, profile: { hobbies: 'chess' } };
+
+    expect(await service.getLesson({ topicId: topic.topic_id, language: 'uz', persona })).toMatchObject({ cached: false });
+    expect(await service.getLesson({ topicId: topic.topic_id, language: 'uz', persona })).toMatchObject({ cached: true });
+    expect(calls).toHaveLength(1);
+  });
+
   it('keeps A1–B2 lessons separated per language', async () => {
     const { client, calls } = mockAnthropic([JSON.stringify(validScript)]);
     const service = makeService({ client });

@@ -6,6 +6,8 @@ export type AskDecision =
   | { action: 'detour'; topicId: string; boardScript: BoardScript }
   | { action: 'replay'; boardScript: BoardScript }
   | { action: 'reexplain'; beats: Beat[] }
+  /** Bixy answering what it is (Part 05 §8) — said, not drawn. */
+  | { action: 'identity'; text: string }
   | { action: 'off_topic' };
 
 /**
@@ -13,8 +15,11 @@ export type AskDecision =
  * on. A lesson for a *different* topic is a detour (§8.12) — played now, returning
  * to the plan topic after; the *same* topic is a replay from the top; a
  * re-explanation appends to the current board; no_content is surfaced plainly.
+ * An identity answer (Part 05 §8) leaves the board alone entirely — it's a reply
+ * to the student, not a change to what's being taught.
  */
 export function decideAsk(result: AskResult, activeTopicId: string | null): AskDecision {
+  if (result.kind === 'identity') return { action: 'identity', text: result.text };
   if (result.kind === 'reexplain') return { action: 'reexplain', beats: result.beats };
   if (result.kind === 'no_content') return { action: 'off_topic' };
   if (result.topic_id === activeTopicId) return { action: 'replay', boardScript: result.board_script };

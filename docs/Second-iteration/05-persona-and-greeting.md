@@ -62,3 +62,64 @@ actually wired.
 - Detour topic tracking — confirmed both the recording and checking sides
   exist and are correctly wired via the shared progress table (skip
   triggers on passing the detour, not merely requesting it, matching spec)
+
+---
+
+## Build notes (Iteration 2, Part 05)
+
+**Correction to §7 — the greeting was PARTLY shipped.** §7 says the mechanism
+"was never actually implemented in production." That's true of the first-ever
+meeting and false of the rest: the day-boundary logic shipped in v1 and is
+live — `greetingVariant` in `study-plan/greeting.ts`, `users.last_greeted_at`
+(migration 0005), `POST /me/greeting`, and the board fetching it on arrival.
+Returning students already get a full greeting on their first visit of a day
+and a short "welcome back" after. Part 00's Persona bullet ("no recency-based
+logic actually shipped") repeats the same overstatement; flagged here rather
+than edited there, per Part 00's own rule. Only the first meeting was actually
+missing, and that's what this part built.
+
+**Confirmed during implementation:**
+
+- **Where the meeting fires:** on arrival at the board, ahead of the
+  continue-prompt, for a student Bixy has never met. That is "the start of
+  their first lesson" as §7 means it — after placement, before any teaching —
+  without inserting a stage before the level check.
+- **A skip is remembered, not re-asked.** Finishing and skipping both stamp
+  `met_at`. A skip that left it unset would re-open the conversation on every
+  visit, which turns one declined question into a recurring one.
+- **The meeting is not a greeting.** It deliberately does not stamp
+  `last_greeted_at`: the student returns to the board seconds later, and a
+  stamp would make that arrival a same-day repeat — Bixy following "nice to
+  meet you" with "welcome back."
+- **Answers are free text**, stored whole and never parsed; blank answers are
+  dropped rather than stored empty, and each is length-capped and flattened to
+  a single line before it reaches a prompt (it's student-written text going
+  into an instruction block).
+- **The tone-shift counter counts the SCORE, not the re-teach.** §6's
+  second-miss rule also forces a whole-topic re-teach at 50–79%, and those
+  aren't the "below 50%" struggle §8 defines the trigger against. It's derived
+  server-side from the reported score and reset on a pass — a client can't ask
+  for the patient register on its own behalf.
+- **The student profile does NOT personalize cached lesson generation.** A
+  lesson is cached per topic/source/language with no student in the key, so
+  feeding every student's profile into it would take the whole product off the
+  cache permanently, for flavour, on its most expensive call. Patience is the
+  one thing that pulls a lesson out of the cache (that generation is written
+  for one student, and must not be served to anyone else — nor may the row
+  that already failed to land be served back to them), and the profile rides
+  along once it has. Otherwise the profile colours the surfaces that are
+  already per-request and uncached: re-explanations and the identity
+  deflection. This is narrower than "personalize how Bixy talks to them going
+  forward" reads in isolation, and it's the reading that doesn't cost the
+  cache.
+- **Identity detection runs on every typed message, strictly first**, and
+  fails open — a classifier error means "not an identity question", so a blip
+  costs a deflection rather than blocking a lesson request. The deflection line
+  is generated (so it varies and stays in voice) with a written per-language
+  fallback, because the one outcome that must never happen here is falling
+  through to "I don't have information about that."
+
+**Not yet applied to the live database:** migration `0009_persona.sql` —
+`users.met_at`, `users.student_profile`, `progress.reteach_all_streak`. Until
+it's pasted into the Supabase SQL editor, the greeting route errors on the
+missing columns.

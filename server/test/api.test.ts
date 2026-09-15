@@ -10,6 +10,7 @@ import type {
   ProgressRepo,
 } from '../src/modules/progress/progress.repo';
 import type { ContentRepo } from '../src/modules/content/content.repo';
+import type { StudentProfile } from '../src/modules/generation/persona';
 import type { LessonService } from '../src/modules/generation/pipeline';
 import type { AssessmentService } from '../src/modules/assessment/assessment';
 import type { LevelCheckQuestion, LevelCheckRepo } from '../src/modules/level-check/levelCheck.repo';
@@ -39,12 +40,13 @@ function fakeUsersRepo() {
     async get(telegramId: string) {
       return store.get(telegramId) ?? null;
     },
-    async getLastGreetedAt(telegramId: string) {
-      return store.get(telegramId)?.last_greeted_at ?? null;
-    },
     async setLastGreetedAt(telegramId: string, iso: string) {
       const prev = store.get(telegramId);
       if (prev) store.set(telegramId, { ...prev, last_greeted_at: iso });
+    },
+    async completeMeeting(telegramId: string, profile: StudentProfile, iso: string) {
+      const prev = store.get(telegramId);
+      if (prev) store.set(telegramId, { ...prev, met_at: iso, student_profile: profile });
     },
   };
   return { repo, store };
@@ -68,6 +70,7 @@ function fakeProgressRepo() {
         mastered: patch.mastered ?? prev?.mastered ?? false,
         missed_fingerprints: patch.missed_fingerprints ?? prev?.missed_fingerprints ?? [],
         retest_round: patch.retest_round ?? prev?.retest_round ?? 0,
+        reteach_all_streak: patch.reteach_all_streak ?? prev?.reteach_all_streak ?? 0,
         updated_at: new Date().toISOString(),
       };
       store.set(key(telegramId, topicId), record);
@@ -799,21 +802,98 @@ describe('study plan (§8.12)', () => {
   });
 });
 
-describe('greeting variant (§8.12)', () => {
-  it('is full the first time, short on a repeat the same day', async () => {
+describe('greeting variant (§8.12, Part 05 §7)', () => {
+  it('meets a brand-new student first, then falls into the day-boundary rule', async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    const greet = () => request(app).post('/me/greeting').set('Authorization', `Bearer ${session}`);
+
+    // Nobody has introduced themselves yet.
+    expect((await greet()).body).toEqual({ variant: 'first_meeting' });
+
+    await request(app)
+      .post('/me/profile')
+      .set('Authorization', `Bearer ${session}`)
+      .send({ answers: { occupation: 'nurse' } });
+
+    // The meeting isn't a greeting, so the greeting that follows it is the full
+    // one — not a same-day "welcome back" moments after "nice to meet you".
+    expect((await greet()).body).toEqual({ variant: 'full' });
+    expect((await greet()).body).toEqual({ variant: 'short' });
+  });
+
+  it('never re-runs the meeting for a student who skipped it', async () => {
     const { app } = buildApp();
     const session = (await signIn(app)).body.session as string;
 
-    const first = await request(app).post('/me/greeting').set('Authorization', `Bearer ${session}`);
-    expect(first.body).toEqual({ variant: 'full' });
+    // A skip sends no answers at all — and still closes the meeting.
+    const skipped = await request(app)
+      .post('/me/profile')
+      .set('Authorization', `Bearer ${session}`)
+      .send({});
+    expect(skipped.status).toBe(200);
+    expect(skipped.body).toEqual({ profile: {} });
 
-    const second = await request(app).post('/me/greeting').set('Authorization', `Bearer ${session}`);
-    expect(second.body).toEqual({ variant: 'short' });
+    const after = await request(app).post('/me/greeting').set('Authorization', `Bearer ${session}`);
+    expect(after.body.variant).not.toBe('first_meeting');
+  });
+
+  it('stores only the answers that were given, trimmed', async () => {
+    const { app, users } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+
+    await request(app)
+      .post('/me/profile')
+      .set('Authorization', `Bearer ${session}`)
+      .send({ answers: { occupation: '  nurse  ', hobbies: '   ', motivation: 'to study abroad' } });
+
+    expect(users.store.get('42')?.student_profile).toEqual({
+      occupation: 'nurse',
+      motivation: 'to study abroad',
+    });
   });
 
   it('requires auth', async () => {
     const { app } = buildApp();
     expect((await request(app).post('/me/greeting')).status).toBe(401);
+    expect((await request(app).post('/me/profile')).status).toBe(401);
+  });
+});
+
+describe('re-teach streak drives the tone shift (Part 05 §8)', () => {
+  it('counts consecutive sub-50% tests and clears on a pass', async () => {
+    const { app, progress } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    const report = (score: number) =>
+      request(app)
+        .put('/progress/past_simple_tense')
+        .set('Authorization', `Bearer ${session}`)
+        .send({ quiz_score: score });
+
+    await report(40);
+    expect(progress.store.get('42:past_simple_tense')?.reteach_all_streak).toBe(1);
+
+    await report(45);
+    expect(progress.store.get('42:past_simple_tense')?.reteach_all_streak).toBe(2);
+
+    // A near miss re-teaches the missed parts (§6) but isn't this struggle.
+    await report(65);
+    expect(progress.store.get('42:past_simple_tense')?.reteach_all_streak).toBe(2);
+
+    await report(90);
+    expect(progress.store.get('42:past_simple_tense')?.reteach_all_streak).toBe(0);
+  });
+
+  it('ignores a streak the client tries to set for itself', async () => {
+    const { app, progress } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+
+    await request(app)
+      .put('/progress/past_simple_tense')
+      .set('Authorization', `Bearer ${session}`)
+      .send({ reteach_all_streak: 9, last_completed_beat: 3 });
+
+    expect(progress.store.get('42:past_simple_tense')?.reteach_all_streak).toBe(0);
   });
 });
 

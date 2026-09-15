@@ -113,8 +113,16 @@ This split is validated mechanically, field by field. A translated \`sentence\`,
 ${catalog}`;
 }
 
-/** The per-request user message: the one target topic to teach + the narration language. */
-export function buildUserPrompt(topic: TopicOutline, language: Language): string {
+/**
+ * The per-request user message: the one target topic to teach + the narration
+ * language, plus anything that varies per STUDENT (Part 05 §8).
+ *
+ * The persona fragment belongs here and nowhere else: the system block above is
+ * one byte-identical cached string shared across every request, so it
+ * structurally cannot carry a per-student instruction. A lesson generated with a
+ * fragment is also not cacheable — see `serveLesson`.
+ */
+export function buildUserPrompt(topic: TopicOutline, language: Language, persona = ''): string {
   return `Generate the board script for this topic.
 
 Student's language: ${LANGUAGE_NAMES[language]} (${language}). Write every story_beat "narration", every "note", every "wrong_answer_reactions" value, "quiz_intro", and every "score_reactions" phrasing in this language — idiomatically, in your persona's tone, not as a literal translation. Keep English grammar terminology (e.g. "Present Perfect") in English inside those sentences.
@@ -124,5 +132,5 @@ Every English-locked field — "term", "formula", "sentence", "emphasis", "wrong
 Reference outline (your grounding — do not drift from it):
 ${JSON.stringify(topic, null, 2)}
 
-Use "${topic.topic_id}" as the top-level topic_id and "${topic.level}" as the level. Output only the JSON board script.${fillerGuidance(language)}`;
+Use "${topic.topic_id}" as the top-level topic_id and "${topic.level}" as the level. Output only the JSON board script.${fillerGuidance(language)}${persona ? `\n\n# This student\n${persona}` : ''}`;
 }

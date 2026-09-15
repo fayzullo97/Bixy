@@ -13,6 +13,8 @@ import { buildRetest, RETEST_SIZE } from './retest.js';
 import { variantFingerprint } from './variants.js';
 import { generateReexplanation } from './reexplain.js';
 import { identifyTopicFromImage, identifyTopicFromText } from './identifyTopic.js';
+import { deflectIdentity, isIdentityQuestion } from './identity.js';
+import { personaFragment, type PersonaContext } from './persona.js';
 import { ensureNarrationBucket, uploadNarration } from '../tts/audioStore.js';
 import { narrate } from '../tts/narrate.js';
 import { canAlign, transcribeWords, type TranscribeConfig } from '../tts/transcribe.js';
@@ -27,6 +29,9 @@ export interface LessonRequest {
   image?: ImageInput;
   language: Language;
   source?: string;
+  /** Per-student persona inputs (Part 05 §8). Present but un-triggered is the
+   *  normal case and changes nothing, including cacheability. */
+  persona?: PersonaContext;
 }
 
 export type LessonResponse =
@@ -40,11 +45,14 @@ export interface AskRequest {
   language: Language;
   currentTopicId?: string | null;
   source?: string;
+  persona?: PersonaContext;
 }
 
 export type AskResponse =
   | { kind: 'lesson'; topicId: string; boardScript: BoardScript; cached: boolean }
   | { kind: 'reexplain'; beats: Beat[] }
+  /** "Are you real?" answered in character (Part 05 §8). */
+  | { kind: 'identity'; text: string }
   | { kind: 'no_content' };
 
 /** A shorter re-test after a failed topic test (Part 04 §6). */
@@ -276,18 +284,38 @@ export function createLessonService(deps: PipelineDeps): LessonService {
    * The topic is resolved BEFORE the cache lookup because the level gate (Part 01
    * §1) needs its CEFR tier: the cache is keyed by the EFFECTIVE content language,
    * so a C1 topic asked for in en/uz/ru shares one English row instead of three.
+   *
+   * Part 05 §8: a lesson written for ONE student — the patient re-teach — is
+   * neither read from nor written to that shared cache. The cache is keyed by
+   * topic/source/language/rule_version with no student in it, so caching a
+   * personalized lesson would serve one student's re-teach to everyone else, and
+   * reading from it would hand the struggling student back the very explanation
+   * that already didn't land. Un-triggered is the overwhelmingly common case and
+   * leaves caching exactly as it was.
    */
   async function serveLesson(
     topicId: string,
     source: string,
     requestedLanguage: Language,
+    persona?: PersonaContext,
   ): Promise<{ boardScript: BoardScript; cached: boolean } | null> {
     const topic = await deps.content.getTopic(topicId);
     if (!topic) return null;
     const language = contentLanguage(topic.level, requestedLanguage);
 
-    const cached = await deps.cache.get(topicId, source, language);
-    if (cached && narrationComplete(cached)) return { boardScript: cached, cached: true };
+    // Only the patient register personalizes a LESSON. The student profile alone
+    // doesn't: it would take every student off the shared cache permanently, for
+    // flavour, on the most expensive call in the product. The profile still
+    // colours the surfaces that are already per-request — a re-explanation, an
+    // identity deflection — and rides along here once patience has already
+    // pulled this generation out of the cache.
+    const fragment = persona?.patient ? personaFragment(persona) : '';
+    const personalized = fragment !== '';
+
+    if (!personalized) {
+      const cached = await deps.cache.get(topicId, source, language);
+      if (cached && narrationComplete(cached)) return { boardScript: cached, cached: true };
+    }
 
     const doodles = await deps.content.listDoodles();
 
@@ -295,7 +323,7 @@ export function createLessonService(deps: PipelineDeps): LessonService {
     for (let attempt = 1; attempt <= MAX_AUDIO_ATTEMPTS; attempt++) {
       const { script } = await generateLesson(
         { anthropic: deps.anthropic, model: deps.models.generation, doodles },
-        { topic, language },
+        { topic, language, persona: fragment },
       );
       await synthesizeNarration(script, topicId, source, language);
 
@@ -306,7 +334,9 @@ export function createLessonService(deps: PipelineDeps): LessonService {
         return { boardScript: script, cached: false };
       }
       if (narrationComplete(script)) {
-        await deps.cache.put(topicId, source, language, script, deps.models.generation);
+        if (!personalized) await deps.cache.put(topicId, source, language, script, deps.models.generation);
+        // Harvested either way: the QUESTIONS in a personalized lesson still test
+        // the same topic, so they're as reusable to the pool as any other run's.
         await harvestQuiz(topicId, language, script);
         return { boardScript: script, cached: false };
       }
@@ -320,7 +350,7 @@ export function createLessonService(deps: PipelineDeps): LessonService {
       const source = request.source ?? 'reference_material';
       const topicId = await resolveTopicId(request);
       if (!topicId) return { ok: false, error: 'not_found' };
-      const lesson = await serveLesson(topicId, source, request.language);
+      const lesson = await serveLesson(topicId, source, request.language, request.persona);
       return lesson ? { ok: true, ...lesson } : { ok: false, error: 'not_found' };
     },
 
@@ -466,18 +496,32 @@ export function createLessonService(deps: PipelineDeps): LessonService {
           return { kind: 'no_content' };
         }
         if (!topicId) return { kind: 'no_content' };
-        const lesson = await serveLesson(topicId, source, request.language);
+        const lesson = await serveLesson(topicId, source, request.language, request.persona);
         return lesson ? { kind: 'lesson', topicId, ...lesson } : { kind: 'no_content' };
       }
 
       const text = request.text?.trim();
       if (!text) return { kind: 'no_content' };
 
+      // "Are you real?" is answered FIRST (Part 05 §8) — before topic matching
+      // and before the no-lesson-open fallback, so it lands the same way whether
+      // or not a lesson is on the board. Downstream it has nowhere good to go:
+      // it matches no topic, so with a lesson open it becomes a re-explanation of
+      // something the student didn't ask about, and without one it becomes "I
+      // don't have information about that" — the tutor appearing to dodge the
+      // question, which is the opposite of the persona's answer to it.
+      if (await isIdentityQuestion(deps.anthropic, deps.models.generation, text)) {
+        return {
+          kind: 'identity',
+          text: await deflectIdentity(deps.anthropic, deps.models.generation, text, request.language),
+        };
+      }
+
       // Text: a different topic is a detour; the same topic (or a question that
       // matches no topic while a lesson is open) is a follow-up on the current one.
       const topicId = await resolveTopicId({ text, language: request.language });
       if (topicId && topicId !== request.currentTopicId) {
-        const lesson = await serveLesson(topicId, source, request.language);
+        const lesson = await serveLesson(topicId, source, request.language, request.persona);
         return lesson ? { kind: 'lesson', topicId, ...lesson } : { kind: 'no_content' };
       }
 
@@ -491,7 +535,14 @@ export function createLessonService(deps: PipelineDeps): LessonService {
       const { beats } = await generateReexplanation(
         { anthropic: deps.anthropic, model: deps.models.generation, doodles },
         // Same level gate as a lesson — a C1 follow-up stays fully English.
-        { topic, language: effective, question: text },
+        // A re-explanation is generated per request and never cached, so the
+        // student's own profile colours it even when patience hasn't triggered.
+        {
+          topic,
+          language: effective,
+          question: text,
+          persona: request.persona ? personaFragment(request.persona) : '',
+        },
       );
       // An alternate explanation is exactly what the pool is for: the next
       // student who stumbles here can be shown this instead of a repeat.

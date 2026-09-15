@@ -13,6 +13,10 @@ export interface ProgressRecord {
   /** 0 = no retest pending; increments per failed retest, driving §6's
    *  second-miss escalation to a whole-topic re-teach. */
   retest_round: number;
+  /** Consecutive whole-topic re-teaches (sub-50% tests) on this topic, driving
+   *  the persona tone shift (Part 05 §8). Reset to 0 on a pass. Per topic
+   *  because the row is — a struggle here never carries into the next topic. */
+  reteach_all_streak: number;
   updated_at: string;
 }
 
@@ -24,6 +28,7 @@ export interface ProgressPatch {
   mastered?: boolean;
   missed_fingerprints?: string[];
   retest_round?: number;
+  reteach_all_streak?: number;
 }
 
 export interface ProgressRepo {

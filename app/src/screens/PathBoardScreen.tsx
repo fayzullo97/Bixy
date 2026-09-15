@@ -3,6 +3,8 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { api, type StudyPlan } from '../api/client';
 import { BoardHost } from '../board/BoardHost';
 import { BoardPrompt } from '../board/BoardPrompt';
+import { FirstMeeting } from '../board/FirstMeeting';
+import type { MeetingAnswers } from '../board/meeting';
 import { InputBar } from '../board/InputBar';
 import { decideAsk } from '../board/detour';
 import type { Beat, BoardScript } from '../board/types';
@@ -11,7 +13,7 @@ import { pickAndEncodeImage, type EncodedImage } from '../net/image';
 import { planGenFailure, type GenMessageKey } from '../board/genRetry';
 import { strings, type Lang } from '../i18n';
 
-type Phase = 'greeting' | 'lesson' | 'transition' | 'complete';
+type Phase = 'greeting' | 'meeting' | 'lesson' | 'transition' | 'complete';
 type ProgressPatch = {
   status?: 'started' | 'passed';
   quiz_score?: number | null;
@@ -56,6 +58,8 @@ export function PathBoardScreen({
   const [reexplain, setReexplain] = useState<{ nonce: number; beats: Beat[] } | null>(null);
   const [inputBusy, setInputBusy] = useState(false);
   const [inputNotice, setInputNotice] = useState<string | null>(null);
+  // 'reply' is Bixy talking (Part 05 §8); 'warn' is the board reporting a problem.
+  const [noticeTone, setNoticeTone] = useState<'warn' | 'reply'>('warn');
   // Bumping this re-runs the generation effect (an automatic or manual reload).
   const [reloadKey, setReloadKey] = useState(0);
   const [retestRound, setRetestRound] = useState(0);
@@ -68,16 +72,24 @@ export function PathBoardScreen({
     autoReloadsRef.current = 0;
   }, [activeTopicId]);
 
-  // The greeting varies by recency (§8.12): full the first visit of a day, a
-  // short "welcome back" after. Fetched once on arrival.
+  // What happens on arrival (§8.12, Part 05 §7): a brand-new student meets Bixy
+  // first; after that the greeting varies by recency — full the first visit of a
+  // day, a short "welcome back" after. Fetched once on arrival.
   useEffect(() => {
     if (phase !== 'greeting' || !plan.current_topic_id) return;
     let active = true;
     (async () => {
       try {
         const variant = await api.postGreeting(session);
-        if (active) setGreeting(variant === 'short' ? t.welcomeBack(name ?? '') : t.greeting(name ?? ''));
+        if (!active) return;
+        if (variant === 'first_meeting') {
+          setPhase('meeting');
+          return;
+        }
+        setGreeting(variant === 'short' ? t.welcomeBack(name ?? '') : t.greeting(name ?? ''));
       } catch {
+        // A failed lookup falls back to the plain greeting, never to the meeting:
+        // re-introducing Bixy to someone it has already met is the worse miss.
         if (active) setGreeting(t.greeting(name ?? ''));
       }
     })();
@@ -87,6 +99,18 @@ export function PathBoardScreen({
     // Only re-run when we return to the greeting for a brand-new arrival.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase === 'greeting']);
+
+  // Part 05 §7: finishing OR skipping ends the meeting for good. The answers go
+  // up best-effort and the student moves straight on — the first lesson is what
+  // they came for, and it never waits on this.
+  const finishMeeting = useCallback(
+    (answers: MeetingAnswers) => {
+      api.postProfile(session, answers);
+      setGreeting(t.greeting(name ?? ''));
+      setPhase('greeting');
+    },
+    [session, name, t],
+  );
 
   const fetchResume = useCallback(
     async (topicId: string): Promise<{ beat: number | null; retestRound: number }> => {
@@ -215,6 +239,7 @@ export function PathBoardScreen({
     async (input: { text?: string; image?: EncodedImage }) => {
       setInputBusy(true);
       setInputNotice(null);
+      setNoticeTone('warn');
       try {
         const result = await api.ask(session, {
           text: input.text,
@@ -237,6 +262,11 @@ export function PathBoardScreen({
           setScript(decision.boardScript);
         } else if (decision.action === 'reexplain') {
           setReexplain((prev) => ({ nonce: (prev?.nonce ?? 0) + 1, beats: decision.beats }));
+        } else if (decision.action === 'identity') {
+          // Bixy answering what it is (Part 05 §8) — spoken back to the student,
+          // leaving the board exactly as it was. It's a reply, not a lesson.
+          setInputNotice(decision.text);
+          setNoticeTone('reply');
         } else {
           setInputNotice(t.askOffTopic);
         }
@@ -271,6 +301,10 @@ export function PathBoardScreen({
         </Pressable>
       </Centered>
     );
+  }
+
+  if (phase === 'meeting') {
+    return <FirstMeeting t={t} onDone={finishMeeting} />;
   }
 
   if (phase === 'greeting' || phase === 'transition') {
@@ -359,7 +393,9 @@ export function PathBoardScreen({
         }}
         onProgress={handleProgress}
       />
-      {inputNotice ? <Text style={styles.notice}>{inputNotice}</Text> : null}
+      {inputNotice ? (
+        <Text style={[styles.notice, noticeTone === 'reply' && styles.noticeReply]}>{inputNotice}</Text>
+      ) : null}
       <InputBar
         placeholder={t.inputPlaceholder}
         attachLabel={t.attachPhoto}
@@ -381,6 +417,7 @@ const styles = StyleSheet.create({
   info: { color: '#98a2b3', fontSize: 15 },
   error: { color: '#ff6b6b', fontSize: 16, textAlign: 'center' },
   notice: { color: '#f0b429', fontSize: 14, textAlign: 'center', paddingHorizontal: 16, paddingBottom: 4 },
+  noticeReply: { color: '#e6e8ee', fontSize: 16, lineHeight: 22 },
   complete: { color: '#e6e8ee', fontSize: 24, textAlign: 'center', lineHeight: 32 },
   back: { position: 'absolute', top: 14, right: 18, zIndex: 1 },
   linkButton: { paddingVertical: 6 },

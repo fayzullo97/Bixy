@@ -57,7 +57,7 @@ Name the concept with its English grammar term inside student-language sentences
 ${catalog}`;
 }
 
-function buildReexplainUser(topic: TopicOutline, language: Language, question: string): string {
+function buildReexplainUser(topic: TopicOutline, language: Language, question: string, persona = ''): string {
   return `The student is in the lesson on "${topic.topic_id}" (${topic.level}). Reference outline (your grounding — don't drift):
 ${JSON.stringify(topic, null, 2)}
 
@@ -65,7 +65,7 @@ Student's language: ${LANGUAGE_NAMES[language]} (${language}) — every "narrati
 
 The student asked: "${question}"
 
-Produce the { "beats": [...] } segment that answers this. Output only the JSON.`;
+Produce the { "beats": [...] } segment that answers this. Output only the JSON.${persona ? `\n\n# This student\n${persona}` : ''}`;
 }
 
 /**
@@ -76,11 +76,11 @@ Produce the { "beats": [...] } segment that answers this. Output only the JSON.`
  */
 export async function generateReexplanation(
   deps: ReexplainDeps,
-  input: { topic: TopicOutline; language: Language; question: string },
+  input: { topic: TopicOutline; language: Language; question: string; persona?: string },
 ): Promise<{ beats: Beat[] }> {
   const system = buildReexplainSystem(deps.doodles);
   const knownElementIds = new Set(deps.doodles.map((d) => d.id));
-  const user = buildReexplainUser(input.topic, input.language, input.question);
+  const user = buildReexplainUser(input.topic, input.language, input.question, input.persona);
 
   let correction = '';
   let lastError: unknown;

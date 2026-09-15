@@ -56,7 +56,17 @@ export interface StudyPlan {
   stats: LevelStats;
 }
 
-export type GreetingVariant = 'full' | 'short';
+/** The arrival stage (§8.12, Part 05 §7). `first_meeting` fires once, ever. */
+export type GreetingVariant = 'full' | 'short' | 'first_meeting';
+
+/** What the student told Bixy when they met (Part 05 §7) — all optional. */
+export interface StudentProfile {
+  occupation?: string;
+  study_place?: string;
+  hobbies?: string;
+  interests?: string;
+  motivation?: string;
+}
 
 /** One topic's saved progress (§8.9) — drives mid-lesson resume (§9.1). */
 export interface ProgressRecord {
@@ -75,6 +85,8 @@ export interface ProgressRecord {
 export type AskResult =
   | { kind: 'lesson'; topic_id: string; board_script: BoardScript; cached: boolean }
   | { kind: 'reexplain'; beats: BoardScript['beats'] }
+  /** "Are you real?", answered in character (Part 05 §8). */
+  | { kind: 'identity'; text: string }
   | { kind: 'no_content' };
 
 async function postJson<T>(path: string, body: unknown, session?: string): Promise<T> {
@@ -325,6 +337,22 @@ export const api = {
     });
     if (!res.ok) throw new Error(`greeting failed: ${res.status}`);
     return ((await res.json()) as { variant: GreetingVariant }).variant;
+  },
+
+  /**
+   * Close the first meeting (Part 05 §7) — sent when the student finishes the
+   * get-to-know-you or skips it. Both end the meeting for good, so this is sent
+   * either way; a skip simply carries no answers.
+   */
+  async postProfile(session: string, answers: StudentProfile): Promise<void> {
+    await fetch(`${API_URL}/me/profile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
+      body: JSON.stringify({ answers }),
+    }).catch(() => {
+      // Best-effort. A lost answer set is a smaller harm than blocking a student
+      // at the door of their first lesson.
+    });
   },
 
   async signOut(session: string): Promise<void> {

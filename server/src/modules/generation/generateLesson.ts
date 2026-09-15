@@ -42,11 +42,11 @@ export function parseJsonLoose(text: string): unknown {
  */
 export async function generateLesson(
   deps: GenerateDeps,
-  input: { topic: TopicOutline; language: Language },
+  input: { topic: TopicOutline; language: Language; persona?: string },
 ): Promise<{ script: BoardScript; attempts: number }> {
   const system = buildSystemPrompt(deps.doodles);
   const knownElementIds = new Set(deps.doodles.map((d) => d.id));
-  const userPrompt = buildUserPrompt(input.topic, input.language);
+  const userPrompt = buildUserPrompt(input.topic, input.language, input.persona);
 
   let correction = '';
   let lastError: unknown;
