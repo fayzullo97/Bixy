@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { CheckInBeat, ContentFormalBeat, ContentStyle, FormalBeat } from './types';
+import { formalSegments } from './formalSegments';
 import { WORD_REVEAL_STAGGER_MS } from './pacing';
 import { FONT_BOLD, FONT_REGULAR, FONT_SEMIBOLD } from './fonts';
 
@@ -20,6 +21,10 @@ const STYLE: Record<ContentStyle, { color: string; font: string; fontSize: numbe
 };
 
 const EMPHASIS_COLOR = '#5aa9ff'; // recap emphasis reuses Formula's blue (§8.3)
+// A `note` is Bixy's wording ABOUT the content, not the content itself, so it
+// reads quieter than the English line it sits under.
+const NOTE_COLOR = '#aab3c2';
+const NOTE_FONT_SIZE = 21;
 
 /** Splits into words while keeping the trailing space so wrapping looks natural. */
 function toWords(text: string): string[] {
@@ -30,41 +35,66 @@ function stripPunct(word: string): string {
   return word.replace(/[^\p{L}\p{N}']/gu, '').toLowerCase();
 }
 
+/**
+ * A formal beat's written lines (§8.3). A beat can now carry more than one line:
+ * a common_mistake writes the wrong sentence and its correction, and most styles
+ * can carry a localized `note` underneath (Part 01 §1). The word-by-word reveal
+ * runs continuously ACROSS the lines, so a two-line beat still reads as one
+ * thought being written rather than two blocks appearing independently.
+ */
 function ContentLine({ beat, animate }: { beat: ContentFormalBeat; animate: boolean }) {
-  const s = STYLE[beat.style];
-  const words = toWords(beat.content);
-  const emphasis = beat.emphasis ? stripPunct(beat.emphasis) : null;
+  const segments = formalSegments(beat);
+  // `start` is each line's offset into the beat's single continuous word stream,
+  // so the reveal flows from one line into the next.
+  let seen = 0;
+  const lines = segments.map((seg) => {
+    const words = toWords(seg.text);
+    const start = seen;
+    seen += words.length;
+    return { ...seg, words, start };
+  });
+  const totalWords = seen;
 
-  const [revealed, setRevealed] = useState(animate ? 0 : words.length);
+  const [revealed, setRevealed] = useState(animate ? 0 : totalWords);
   useEffect(() => {
     if (!animate) {
-      setRevealed(words.length);
+      setRevealed(totalWords);
       return;
     }
     setRevealed(0);
-    const timers = words.map((_, i) =>
+    const timers = Array.from({ length: totalWords }, (_, i) =>
       setTimeout(() => setRevealed((r) => Math.max(r, i + 1)), i * WORD_REVEAL_STAGGER_MS),
     );
     return () => timers.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [beat.content, animate]);
+  }, [segments.map((seg) => seg.text).join('\u0000'), animate]);
 
   return (
-    <View style={styles.line}>
-      {words.map((word, i) => {
-        const isEmphasis = emphasis != null && stripPunct(word) === emphasis;
+    <View>
+      {lines.map((line, li) => {
+        const s = line.secondary
+          ? { color: NOTE_COLOR, font: FONT_REGULAR, fontSize: NOTE_FONT_SIZE }
+          : { ...STYLE[beat.style], ...(line.color ? { color: line.color } : {}) };
+        const emphasis = line.emphasis ? stripPunct(line.emphasis) : null;
         return (
-          <Text
-            key={i}
-            style={{
-              fontFamily: isEmphasis ? FONT_BOLD : s.font,
-              fontSize: s.fontSize,
-              color: isEmphasis ? EMPHASIS_COLOR : s.color,
-              opacity: i < revealed ? 1 : 0,
-            }}
-          >
-            {word}
-          </Text>
+          <View key={li} style={[styles.line, line.secondary && styles.noteLine]}>
+            {line.words.map((word, i) => {
+              const isEmphasis = emphasis != null && stripPunct(word) === emphasis;
+              return (
+                <Text
+                  key={i}
+                  style={{
+                    fontFamily: isEmphasis ? FONT_BOLD : s.font,
+                    fontSize: s.fontSize,
+                    color: isEmphasis ? EMPHASIS_COLOR : s.color,
+                    opacity: line.start + i < revealed ? 1 : 0,
+                  }}
+                >
+                  {word}
+                </Text>
+              );
+            })}
+          </View>
         );
       })}
     </View>
@@ -141,6 +171,7 @@ export function FormalText({
 
 const styles = StyleSheet.create({
   line: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', marginVertical: 6 },
+  noteLine: { marginTop: 2, marginBottom: 10 },
   checkIn: { marginVertical: 12, alignSelf: 'stretch' },
   question: { fontFamily: FONT_REGULAR, fontSize: 27, color: '#ffffff', marginBottom: 12 },
   options: { gap: 10 },

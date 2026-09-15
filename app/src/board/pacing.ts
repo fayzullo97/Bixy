@@ -1,4 +1,5 @@
 import type { Beat } from './types';
+import { formalTextLength } from './formalSegments';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -17,7 +18,7 @@ export function beatDurationMs(beat: Beat): number {
   if (beat.style === 'check_in_question') {
     return clamp(2600 + beat.question.length * 30, 3600, 9000);
   }
-  return clamp(1200 + beat.content.length * 55, 1800, 7000);
+  return clamp(1200 + formalTextLength(beat) * 55, 1800, 7000);
 }
 
 /** Per-path draw time for a doodle, and the stagger between successive paths. */
