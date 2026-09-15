@@ -6,7 +6,7 @@ import type { BoardScript } from './types';
 const script: BoardScript = {
   topic_id: 'past_simple',
   level: 'A2',
-  beats: [{ id: 1, type: 'formal_beat', style: 'title', content: 'Past Simple' }],
+  beats: [{ id: 1, type: 'formal_beat', style: 'title', term: 'Past Simple' }],
 };
 
 describe('decideAsk (§8.5/§8.12)', () => {

@@ -66,6 +66,8 @@ function fakeProgressRepo() {
         quiz_score: patch.quiz_score ?? prev?.quiz_score ?? null,
         last_completed_beat: patch.last_completed_beat ?? prev?.last_completed_beat ?? null,
         mastered: patch.mastered ?? prev?.mastered ?? false,
+        missed_fingerprints: patch.missed_fingerprints ?? prev?.missed_fingerprints ?? [],
+        retest_round: patch.retest_round ?? prev?.retest_round ?? 0,
         updated_at: new Date().toISOString(),
       };
       store.set(key(telegramId, topicId), record);
@@ -136,9 +138,35 @@ const fakeLessons: LessonService = {
       boardScript: {
         topic_id: request.topicId ?? 'x',
         level: 'A2',
-        beats: [{ id: 1, type: 'formal_beat', style: 'title', content: 'Present Perfect' }],
+        beats: [{ id: 1, type: 'formal_beat', style: 'title', term: 'Present Perfect' }],
       },
     };
+  },
+  async getDetourWrapUp(topicId) {
+    if (topicId === 'empty_pool') return null;
+    return {
+      quiz_question_id: 1,
+      type: 'multiple_choice' as const,
+      question: `wrap-up for ${topicId}`,
+      options: ['a', 'b'],
+      correct_index: 0,
+      tests_beat_id: 1,
+    };
+  },
+  async fingerprintMissed(_topicId, _language, ids) {
+    return ids.map((id) => `fp-${id}`);
+  },
+  async getRetest(request) {
+    // Echoes the missed set back as questions, so the route's job — reading the
+    // student's own progress rather than trusting the request body — is testable.
+    return request.missedFingerprints.map((fp, i) => ({
+      quiz_question_id: i + 1,
+      type: 'multiple_choice' as const,
+      question: `retest:${fp}`,
+      options: ['a', 'b'],
+      correct_index: 0,
+      tests_beat_id: 1,
+    }));
   },
   async ask(request) {
     if (request.text === 'reexplain') return { kind: 'reexplain', beats: [] };
@@ -147,7 +175,7 @@ const fakeLessons: LessonService = {
       kind: 'lesson',
       topicId: request.text ?? 'x',
       cached: false,
-      boardScript: { topic_id: request.text ?? 'x', level: 'A2', beats: [{ id: 1, type: 'formal_beat', style: 'title', content: 'T' }] },
+      boardScript: { topic_id: request.text ?? 'x', level: 'A2', beats: [{ id: 1, type: 'formal_beat', style: 'title', term: 'T' }] },
     };
   },
 };
@@ -381,6 +409,138 @@ describe('GET /content/doodles', () => {
       id: 'person_a',
       url: expect.stringContaining('person_a.svg'),
     });
+  });
+});
+
+describe('PUT /progress/:topicId — quiz result (Part 04 §6)', () => {
+  it('derives missed fingerprints server-side from reported quiz ids', async () => {
+    const { app, progress } = buildApp();
+    const signed = await signIn(app);
+    const session = signed.body.session as string;
+    const telegramId = signed.body.user.telegramId as string;
+
+    const res = await request(app)
+      .put('/progress/present_perfect')
+      .set('Authorization', `Bearer ${session}`)
+      .send({ quiz_score: 60, retest_round: 1, language: 'uz', missed_quiz_question_ids: [2, 5] });
+
+    expect(res.status).toBe(200);
+    const stored = (await progress.repo.listForUser(telegramId)).find((p) => p.topic_id === 'present_perfect');
+    expect(stored?.missed_fingerprints).toEqual(['fp-2', 'fp-5']);
+    expect(stored?.retest_round).toBe(1);
+  });
+
+  it('ignores client-supplied fingerprints outright', async () => {
+    const { app, progress } = buildApp();
+    const signed = await signIn(app);
+    const session = signed.body.session as string;
+    const telegramId = signed.body.user.telegramId as string;
+
+    await request(app)
+      .put('/progress/present_perfect')
+      .set('Authorization', `Bearer ${session}`)
+      // No missed_quiz_question_ids, so nothing should be derived — and the
+      // hand-written fingerprints must not be taken at face value.
+      .send({ quiz_score: 40, missed_fingerprints: ['forged'] });
+
+    const stored = (await progress.repo.listForUser(telegramId)).find((p) => p.topic_id === 'present_perfect');
+    expect(stored?.missed_fingerprints).toEqual([]);
+  });
+
+  it('rejects a negative retest_round', async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    const res = await request(app)
+      .put('/progress/present_perfect')
+      .set('Authorization', `Bearer ${session}`)
+      .send({ retest_round: -1 });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('POST /lessons/wrap-up (Part 04 §13)', () => {
+  it('requires auth', async () => {
+    const { app } = buildApp();
+    expect((await request(app).post('/lessons/wrap-up').send({ topic_id: 't', language: 'uz' })).status).toBe(401);
+  });
+
+  it('returns a check-in question for the detour topic', async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    const res = await request(app)
+      .post('/lessons/wrap-up')
+      .set('Authorization', `Bearer ${session}`)
+      .send({ topic_id: 'past_simple_tense', language: 'uz' });
+    expect(res.status).toBe(200);
+    expect(res.body.question.question).toBe('wrap-up for past_simple_tense');
+  });
+
+  it('returns 200 with a null question when nothing is pooled yet', async () => {
+    // Not an error state: the board just returns to the plan without a check-in
+    // rather than blocking the student on flavour.
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    const res = await request(app)
+      .post('/lessons/wrap-up')
+      .set('Authorization', `Bearer ${session}`)
+      .send({ topic_id: 'empty_pool', language: 'uz' });
+    expect(res.status).toBe(200);
+    expect(res.body.question).toBeNull();
+  });
+
+  it('validates language and topic_id', async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    const auth = (r: request.Test) => r.set('Authorization', `Bearer ${session}`);
+    expect((await auth(request(app).post('/lessons/wrap-up')).send({ topic_id: 't', language: 'fr' })).status).toBe(400);
+    expect((await auth(request(app).post('/lessons/wrap-up')).send({ language: 'uz' })).status).toBe(400);
+  });
+});
+
+describe('POST /lessons/retest (Part 04 §6)', () => {
+  it('requires auth', async () => {
+    const { app } = buildApp();
+    const res = await request(app).post('/lessons/retest').send({ topic_id: 't', language: 'uz' });
+    expect(res.status).toBe(401);
+  });
+
+  it('requires a valid language and a topic_id', async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    const auth = (r: request.Test) => r.set('Authorization', `Bearer ${session}`);
+    expect((await auth(request(app).post('/lessons/retest')).send({ topic_id: 't', language: 'fr' })).status).toBe(400);
+    expect((await auth(request(app).post('/lessons/retest')).send({ language: 'uz' })).status).toBe(400);
+  });
+
+  it('builds the retest from the student’s OWN persisted misses, not the request body', async () => {
+    const { app, progress } = buildApp();
+    const signed = await signIn(app);
+    const session = signed.body.session as string;
+    const telegramId = signed.body.user.telegramId as string;
+
+    await progress.repo.upsert(telegramId, 'present_perfect', { missed_fingerprints: ['mine-a', 'mine-b'], retest_round: 1 });
+
+    const res = await request(app)
+      .post('/lessons/retest')
+      .set('Authorization', `Bearer ${session}`)
+      // A client trying to choose its own easier retest must be ignored.
+      .send({ topic_id: 'present_perfect', language: 'uz', missed_fingerprints: ['theirs'] });
+
+    expect(res.status).toBe(200);
+    expect(res.body.quiz.map((q: { question: string }) => q.question)).toEqual(['retest:mine-a', 'retest:mine-b']);
+    expect(res.body.retest_round).toBe(1);
+  });
+
+  it('reports round 0 and an empty set for a topic never attempted', async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    const res = await request(app)
+      .post('/lessons/retest')
+      .set('Authorization', `Bearer ${session}`)
+      .send({ topic_id: 'never_seen', language: 'uz' });
+    expect(res.status).toBe(200);
+    expect(res.body.quiz).toEqual([]);
+    expect(res.body.retest_round).toBe(0);
   });
 });
 

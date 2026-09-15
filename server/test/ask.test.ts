@@ -21,7 +21,7 @@ const topic: TopicOutline = {
 const reexplainOut = JSON.stringify({
   beats: [
     { id: 1, type: 'story_beat', narration: 'Keling, buni boshqacha qilib, yana bir bor birga koraylik hozir.', doodles: [] },
-    { id: 2, type: 'formal_beat', style: 'explanation', content: 'have + past participle' },
+    { id: 2, type: 'formal_beat', style: 'explanation', note: 'have + past participle' },
   ],
 });
 
@@ -63,7 +63,21 @@ function seededCache(): LessonCacheRepo {
   return {
     get: async (t) =>
       known.has(t)
-        ? ({ topic_id: t, level: 'B1', beats: [{ id: 1, type: 'formal_beat', style: 'title', content: 'T' }] } as BoardScript)
+        ? ({
+            topic_id: t,
+            level: 'B1',
+            // Carries its synthesized `speech`, or narrationComplete treats the
+            // row as degraded and regenerates it (Part 02 §5).
+            beats: [
+              {
+                id: 1,
+                type: 'formal_beat',
+                style: 'title',
+                term: 'T',
+                speech: [{ text: 'T', language: 'en', audio_url: 'https://cdn.test/t.wav' }],
+              },
+            ],
+          } as BoardScript)
         : null,
     put: async () => {},
   };

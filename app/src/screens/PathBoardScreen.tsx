@@ -58,6 +58,7 @@ export function PathBoardScreen({
   const [inputNotice, setInputNotice] = useState<string | null>(null);
   // Bumping this re-runs the generation effect (an automatic or manual reload).
   const [reloadKey, setReloadKey] = useState(0);
+  const [retestRound, setRetestRound] = useState(0);
   const autoReloadsRef = useRef(0);
   const advancedFor = useRef<Set<string>>(new Set());
 
@@ -88,12 +89,16 @@ export function PathBoardScreen({
   }, [phase === 'greeting']);
 
   const fetchResume = useCallback(
-    async (topicId: string): Promise<number | null> => {
+    async (topicId: string): Promise<{ beat: number | null; retestRound: number }> => {
       try {
         const record = (await api.getProgress(session)).find((p) => p.topic_id === topicId);
-        return record && record.status !== 'passed' ? record.last_completed_beat : null;
+        return {
+          beat: record && record.status !== 'passed' ? record.last_completed_beat : null,
+          // Carries §6's second-miss escalation across a session boundary.
+          retestRound: record?.retest_round ?? 0,
+        };
       } catch {
-        return null; // resume is best-effort; fall back to the top of the topic.
+        return { beat: null, retestRound: 0 }; // best-effort; fall back to the top.
       }
     },
     [session],
@@ -118,7 +123,8 @@ export function PathBoardScreen({
           fetchResume(topicId),
         ]);
         if (!active) return;
-        setResumeFromBeatId(resumeBeat);
+        setResumeFromBeatId(resumeBeat.beat);
+        setRetestRound(resumeBeat.retestRound);
         setScript(board_script);
       } catch (e) {
         if (!active) return;
@@ -168,6 +174,31 @@ export function PathBoardScreen({
     [session, activeTopicId, detour],
   );
 
+  // Part 04 §6: the shorter retest after a re-teach. Server-selected from the
+  // student's persisted misses plus the topic's variant pool; an empty result
+  // means nothing is stored yet, and the board falls back to the full test.
+  const requestRetest = useCallback(async () => {
+    if (!activeTopicId) return [];
+    try {
+      const { quiz } = await api.retest(session, { topic_id: activeTopicId, language });
+      return quiz;
+    } catch {
+      return [];
+    }
+  }, [session, activeTopicId, language]);
+
+  // Part 04 §13: the check-in that closes out a detour. Each call rotates past
+  // the last question served, so a wrong answer re-asks and gets a different one.
+  const requestWrapUp = useCallback(async () => {
+    if (!detour) return null;
+    try {
+      const { question } = await api.wrapUp(session, { topic_id: detour.topicId, language });
+      return question;
+    } catch {
+      return null; // no check-in is better than a stuck detour.
+    }
+  }, [session, detour, language]);
+
   // Leave a detour and return to the plan topic, resumed where the student left it.
   const returnToPlan = useCallback(() => {
     setDetour(null);
@@ -196,6 +227,7 @@ export function PathBoardScreen({
           autoReloadsRef.current = 0;
           setReexplain(null);
           setResumeFromBeatId(null); // a fresh detour starts from the top
+          setRetestRound(0);
           setFailure(null);
           setScript(decision.boardScript);
           setDetour({ topicId: decision.topicId });
@@ -298,6 +330,20 @@ export function PathBoardScreen({
         <Text style={styles.backText}>{detour ? t.detourReturn : t.toYourPlan}</Text>
       </Pressable>
       <BoardHost
+        initialRetestRound={retestRound}
+        onRequestRetest={requestRetest}
+        detour={
+          detour
+            ? {
+                requestWrapUp,
+                // Auto-return (Part 04 §13). The manual control above stays as a
+                // fallback, but the normal path no longer depends on the student
+                // noticing it — not noticing it is what made interrupted topics
+                // look abandoned in the first place.
+                onComplete: returnToPlan,
+              }
+            : undefined
+        }
         // Remount on a topic switch (detour ↔ plan) so playback + resume restart cleanly.
         key={activeTopicId ?? 'none'}
         script={script}

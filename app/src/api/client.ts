@@ -1,5 +1,5 @@
 import type { Lang } from '../i18n';
-import type { BoardScript } from '../board/types';
+import type { BoardScript, QuizQuestion } from '../board/types';
 
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -65,6 +65,9 @@ export interface ProgressRecord {
   quiz_score: number | null;
   last_completed_beat: number | null;
   mastered: boolean;
+  /** Part 04 §6 — retests already failed, and what was missed last time. */
+  retest_round?: number;
+  missed_fingerprints?: string[];
 }
 
 /** What a submitted input (§8.5) resolved to: a full lesson (a detour to a new
@@ -141,6 +144,49 @@ export const api = {
     if (res.status === 404) throw new Error('no_content');
     if (!res.ok) throw new Error(`lesson failed: ${res.status}`);
     return res.json() as Promise<{ board_script: BoardScript; cached: boolean }>;
+  },
+
+  /**
+   * The shorter retest after a failed topic test (Part 04 §6). The server picks
+   * the questions from the student's own persisted misses plus the topic's
+   * variant pool — the client doesn't choose, and doesn't need to.
+   */
+  async retest(
+    session: string,
+    body: { topic_id: string; language: Lang },
+  ): Promise<{ quiz: QuizQuestion[]; retest_round: number }> {
+    const res = await fetchWithTimeout(
+      `${API_URL}/lessons/retest`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
+        body: JSON.stringify(body),
+      },
+      LESSON_TIMEOUT_MS,
+    );
+    if (!res.ok) throw new Error(`retest failed: ${res.status}`);
+    return res.json() as Promise<{ quiz: QuizQuestion[]; retest_round: number }>;
+  },
+
+  /**
+   * The check-in closing out a detour (Part 04 §13). A null question means the
+   * topic has nothing pooled yet — the board then returns without one.
+   */
+  async wrapUp(
+    session: string,
+    body: { topic_id: string; language: Lang },
+  ): Promise<{ question: QuizQuestion | null }> {
+    const res = await fetchWithTimeout(
+      `${API_URL}/lessons/wrap-up`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
+        body: JSON.stringify(body),
+      },
+      LESSON_TIMEOUT_MS,
+    );
+    if (!res.ok) throw new Error(`wrap-up failed: ${res.status}`);
+    return res.json() as Promise<{ question: QuizQuestion | null }>;
   },
 
   /**

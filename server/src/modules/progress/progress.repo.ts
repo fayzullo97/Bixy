@@ -7,6 +7,12 @@ export interface ProgressRecord {
   quiz_score: number | null;
   last_completed_beat: number | null;
   mastered: boolean;
+  /** Fingerprints of questions missed on the last attempt (Part 04 §6). Stored
+   *  as content hashes rather than quiz ids so they survive a regeneration. */
+  missed_fingerprints: string[];
+  /** 0 = no retest pending; increments per failed retest, driving §6's
+   *  second-miss escalation to a whole-topic re-teach. */
+  retest_round: number;
   updated_at: string;
 }
 
@@ -16,6 +22,8 @@ export interface ProgressPatch {
   quiz_score?: number | null;
   last_completed_beat?: number | null;
   mastered?: boolean;
+  missed_fingerprints?: string[];
+  retest_round?: number;
 }
 
 export interface ProgressRepo {

@@ -132,3 +132,21 @@ a fallback/escape hatch, but isn't required for the normal path anymore.
   topic's own full quiz at ≥80%, unchanged. Verified in code: a detour pass
   is explicitly blocked from advancing the plan, so a detour stays
   "started" until its own full test separately passes.
+- **Check-in question types — confirmed: multiple-choice and True/False
+  only.** A wrap-up check-in has to read as a check-in, and a check-in is
+  tapped, not typed. Fill-in-the-blank would also drag the grader into a
+  step that isn't a gate, which is more machinery than a wrap-up warrants,
+  so those are filtered out of the pool draw rather than handled.
+- **Empty pool — confirmed: skip the check-in and return anyway.** On a
+  topic whose pool holds no usable question yet (a first-ever detour into
+  it, or nothing left after the type filter above), the board returns
+  straight to the interrupted topic instead of stranding the student on a
+  blank step. The check-in is a nicety; the auto-return is the fix this
+  section exists for, and it must not depend on the nicety being
+  available. Same fallback on a request error.
+- **Retry cap — confirmed: one retry, then return regardless.** A wrong
+  answer asks once more with a different variant (the pool's rotation
+  supplies it), and after that the board returns whether or not the second
+  answer was right. This is a wrap-up, not a gate — a student who can't
+  answer it must never end up stuck on the detour, which is the exact
+  failure mode §13 exists to remove.

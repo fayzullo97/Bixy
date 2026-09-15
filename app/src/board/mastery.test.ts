@@ -6,9 +6,9 @@ import type { QuizAnswer } from './Quiz';
 // Three lesson beats and a 10-question quiz whose questions tag beats 1, 2, 3
 // in a repeating cycle — enough to exercise the missed-beat re-teach subset.
 const beats: Beat[] = [
-  { id: 1, type: 'formal_beat', style: 'title', content: 'A' },
-  { id: 2, type: 'formal_beat', style: 'formula', content: 'B' },
-  { id: 3, type: 'formal_beat', style: 'example', content: 'C' },
+  { id: 1, type: 'formal_beat', style: 'title', term: 'A' },
+  { id: 2, type: 'formal_beat', style: 'formula', formula: 'B' },
+  { id: 3, type: 'formal_beat', style: 'example', sentence: 'C' },
 ];
 
 const quiz: QuizQuestion[] = Array.from({ length: 10 }, (_, i) => ({
@@ -60,5 +60,62 @@ describe('decideMastery (§8.4)', () => {
 
   it('treats an empty quiz as passed', () => {
     expect(decideMastery([], [], beats)).toMatchObject({ outcome: 'passed', scorePct: 100 });
+  });
+});
+
+describe('second-miss escalation (Part 04 §6)', () => {
+  const beats: Beat[] = [
+    { id: 1, type: 'formal_beat', style: 'title', term: 'T' },
+    { id: 2, type: 'formal_beat', style: 'example', sentence: 'A.' },
+    { id: 3, type: 'formal_beat', style: 'example', sentence: 'B.' },
+  ];
+  const quiz: QuizQuestion[] = [
+    { quiz_question_id: 1, type: 'multiple_choice', question: 'q1', options: ['a', 'b'], correct_index: 0, tests_beat_id: 2 },
+    { quiz_question_id: 2, type: 'multiple_choice', question: 'q2', options: ['a', 'b'], correct_index: 0, tests_beat_id: 2 },
+    { quiz_question_id: 3, type: 'multiple_choice', question: 'q3', options: ['a', 'b'], correct_index: 0, tests_beat_id: 3 },
+    { quiz_question_id: 4, type: 'multiple_choice', question: 'q4', options: ['a', 'b'], correct_index: 0, tests_beat_id: 3 },
+  ];
+  // 50% — squarely in the reteach_missed tier on a first attempt.
+  const halfRight = [
+    { kind: 'choice' as const, index: 0, correct: true },
+    { kind: 'choice' as const, index: 0, correct: true },
+    { kind: 'choice' as const, index: 1, correct: false },
+    { kind: 'choice' as const, index: 1, correct: false },
+  ];
+
+  it('uses the normal tier on the first miss', () => {
+    const d = decideMastery(quiz, halfRight, beats, 0);
+    expect(d.scorePct).toBe(50);
+    expect(d.outcome).toBe('reteach_missed');
+    expect(d.reteachBeats.map((b) => b.id)).toEqual([3]);
+  });
+
+  it('escalates to the whole topic once a retest has already been failed', () => {
+    const d = decideMastery(quiz, halfRight, beats, 1);
+    expect(d.scorePct).toBe(50);
+    // Same score, same misses — the escalation overrides the tier, because
+    // re-teaching only the missed fragments clearly hasn't worked by now.
+    expect(d.outcome).toBe('reteach_all');
+    expect(d.reteachBeats).toHaveLength(3);
+  });
+
+  it('still passes on a good retest, whatever the round', () => {
+    const allRight = quiz.map(() => ({ kind: 'choice' as const, index: 0, correct: true }));
+    expect(decideMastery(quiz, allRight, beats, 3).outcome).toBe('passed');
+  });
+
+  it('reports which questions were missed, for the retest to lead with', () => {
+    expect(decideMastery(quiz, halfRight, beats, 0).missedIndexes).toEqual([2, 3]);
+    expect(decideMastery(quiz, halfRight, beats, 0).missedIndexes).not.toContain(0);
+  });
+
+  it('reports no misses when passed', () => {
+    const nearPerfect = [
+      { kind: 'choice' as const, index: 0, correct: true },
+      { kind: 'choice' as const, index: 0, correct: true },
+      { kind: 'choice' as const, index: 0, correct: true },
+      { kind: 'choice' as const, index: 0, correct: true },
+    ];
+    expect(decideMastery(quiz, nearPerfect, beats, 0).missedIndexes).toEqual([]);
   });
 });

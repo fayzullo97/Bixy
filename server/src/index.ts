@@ -9,29 +9,59 @@ import { supabaseProgressRepo } from './modules/progress/progress.repo.js';
 import { supabaseContentRepo } from './modules/content/content.repo.js';
 import { anthropic, MODELS } from './modules/generation/anthropic.js';
 import { supabaseLessonCacheRepo } from './modules/generation/lessonCache.repo.js';
+import { supabaseVariantsRepo } from './modules/generation/variants.repo.js';
 import { createLessonService } from './modules/generation/pipeline.js';
 import { createAssessmentService } from './modules/assessment/assessment.js';
 import { supabaseLevelCheckRepo } from './modules/level-check/levelCheck.repo.js';
 import { supabaseStudyPlanRepo } from './modules/study-plan/studyPlan.repo.js';
 import { createStudyPlanService } from './modules/study-plan/studyPlan.service.js';
 import { createAisha } from './modules/tts/aisha.js';
+import { createOpenAiTts } from './modules/tts/openai.js';
+import { createTtsRouter } from './modules/tts/router.js';
 
 // Composition root: wire real implementations to the app's dependency contract.
 const db = createSupabase();
 const content = supabaseContentRepo(db);
 const progress = supabaseProgressRepo(db);
 
+// Narration splits by language (Part 01 §2): Uzbek on AishaAI, Russian and
+// English on OpenAI — one provider for those two so embedded English grammar
+// terms inside Russian narration are spoken in the same voice.
+const tts = createTtsRouter({
+  uz: createAisha({
+    apiKey: env.AISHA_API_KEY,
+    baseUrl: env.AISHA_BASE_URL,
+    mood: env.AISHA_MOOD,
+  }),
+  ru: createOpenAiTts({
+    apiKey: env.OPENAI_API_KEY,
+    baseUrl: env.OPENAI_BASE_URL,
+    model: env.OPENAI_TTS_MODEL,
+    voice: env.OPENAI_TTS_VOICE,
+    instructions: env.OPENAI_TTS_INSTRUCTIONS || undefined,
+  }),
+  en: createOpenAiTts({
+    apiKey: env.OPENAI_API_KEY,
+    baseUrl: env.OPENAI_BASE_URL,
+    model: env.OPENAI_TTS_MODEL,
+    voice: env.OPENAI_TTS_VOICE,
+    instructions: env.OPENAI_TTS_INSTRUCTIONS || undefined,
+  }),
+});
+
 const lessons = createLessonService({
   anthropic,
   models: { generation: MODELS.generation, topicId: MODELS.topicId },
   content,
   cache: supabaseLessonCacheRepo(db),
-  tts: createAisha({
-    apiKey: env.AISHA_API_KEY,
-    baseUrl: env.AISHA_BASE_URL,
-    mood: env.AISHA_MOOD,
-  }),
+  tts,
   db,
+  transcribe: {
+    apiKey: env.OPENAI_API_KEY,
+    baseUrl: env.OPENAI_BASE_URL,
+    model: env.OPENAI_TRANSCRIBE_MODEL,
+  },
+  variants: supabaseVariantsRepo(db),
 });
 
 const app = configureApp(express(), {

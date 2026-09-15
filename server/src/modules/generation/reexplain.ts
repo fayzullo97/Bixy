@@ -29,7 +29,12 @@ function buildReexplainSystem(doodles: DoodleCatalogEntry[]): string {
 # Output
 A JSON object: { "beats": [ ... ] } — 2 to 5 beats, NO quiz, NO title. Same beat shapes as a lesson:
 - story_beat: { "id": int, "type": "story_beat", "narration": string, "doodles": [ { "element_id": string, "position"?: "left"|"center"|"right", "attached_to"?: string, "text"?: string } ] }
-- formal_beat: { "id": int, "type": "formal_beat", "style": "explanation"|"example"|"common_mistake"|"formula"|"recap_example", "content": string, "emphasis"?: string }
+- formal_beat. \`type\` is ALWAYS the literal string "formal_beat" — never a style name. \`style\` selects which other fields the beat carries; they are NOT interchangeable:
+  { "id": int, "type": "formal_beat", "style": "explanation", "note": string }
+  { "id": int, "type": "formal_beat", "style": "formula", "formula": string, "note"?: string }
+  { "id": int, "type": "formal_beat", "style": "example", "sentence": string, "note"?: string }
+  { "id": int, "type": "formal_beat", "style": "recap_example", "sentence": string, "emphasis"?: string, "note"?: string }
+  { "id": int, "type": "formal_beat", "style": "common_mistake", "wrong": string, "correct": string, "note": string }
 Ids are 1-based and sequential within this segment.
 
 # Approach
@@ -38,7 +43,10 @@ Ids are 1-based and sequential within this segment.
 - At least one story_beat carrying the spoken explanation; add a formal_beat only if writing it helps.
 
 # Language (critical)
-The ONLY field in the student's narration language is each story_beat "narration". EVERYTHING written on the board (formal beat content/emphasis, any bubble text) stays in English — it is the target-language material the student is learning.
+Every field belongs to exactly one language — never blended inside one string.
+- ALWAYS ENGLISH (the material being taught): \`formula\`, \`sentence\`, \`emphasis\`, \`wrong\`, \`correct\`, and every doodle \`text\` (characters demonstrate the grammar by speaking it).
+- ALWAYS THE STUDENT'S LANGUAGE (your wording about it): every story_beat \`narration\`, every \`note\`.
+Name the concept with its English grammar term inside student-language sentences ("Present Perfect"); don't restate the English example sentences there — they have their own fields.
 
 # Rules
 - doodles[].element_id MUST be one of the catalog ids below — never invent artwork.
@@ -53,7 +61,7 @@ function buildReexplainUser(topic: TopicOutline, language: Language, question: s
   return `The student is in the lesson on "${topic.topic_id}" (${topic.level}). Reference outline (your grounding — don't drift):
 ${JSON.stringify(topic, null, 2)}
 
-Narration language: ${LANGUAGE_NAMES[language]} (${language}) — only story_beat "narration" is in it; everything written on the board stays English.
+Student's language: ${LANGUAGE_NAMES[language]} (${language}) — every "narration" and "note" is in it; "formula", "sentence", "emphasis", "wrong", "correct" and every doodle "text" stay English.
 
 The student asked: "${question}"
 

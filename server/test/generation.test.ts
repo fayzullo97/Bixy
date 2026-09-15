@@ -11,6 +11,7 @@ import type {
   DoodleCatalogEntry,
   TopicOutline,
 } from '../src/modules/content/content.repo';
+import type { TtsClient } from '../src/modules/tts/client';
 import type { LessonCacheRepo } from '../src/modules/generation/lessonCache.repo';
 import { parseBoardScript, type BoardScript } from '../src/modules/generation/boardScript';
 
@@ -68,7 +69,7 @@ const validScript: BoardScript = {
   topic_id: 'present_perfect_tense',
   level: 'B1',
   beats: [
-    { id: 1, type: 'formal_beat', style: 'title', content: 'Present Perfect' },
+    { id: 1, type: 'formal_beat', style: 'title', term: 'Present Perfect' },
     { id: 2, type: 'story_beat', narration: 'Salom!', doodles: [{ element_id: 'person_a', position: 'left' }] },
     {
       id: 3,
@@ -81,6 +82,7 @@ const validScript: BoardScript = {
     },
   ],
   quiz: validQuiz,
+  quiz_intro: "Okay, let's see how much of that stuck.",
 };
 
 function mockAnthropic(replies: string[]) {
@@ -136,7 +138,9 @@ describe('generateLesson', () => {
     const { client } = mockAnthropic(['```json\n' + JSON.stringify(validScript) + '\n```']);
     const { script } = await generateLesson(
       { anthropic: client, model: 'claude-haiku-4-5', doodles },
-      { topic, language: 'ru' },
+      // uz, matching the fixture's Uzbek narration — this test is about fence
+      // tolerance, and asking for `ru` would (correctly) trip the language check.
+      { topic, language: 'uz' },
     );
     expect(script.topic_id).toBe('present_perfect_tense');
   });
@@ -280,6 +284,26 @@ describe('identifyTopicFromText', () => {
   });
 });
 
+/** Minimal valid PCM16 mono 24kHz WAV — narrate() reads the format off real clips. */
+function fakeWav(dataBytes = 480): Buffer {
+  const data = Buffer.alloc(dataBytes);
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0, 'ascii');
+  header.writeUInt32LE(36 + data.length, 4);
+  header.write('WAVE', 8, 'ascii');
+  header.write('fmt ', 12, 'ascii');
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(24000, 24);
+  header.writeUInt32LE(24000 * 2, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write('data', 36, 'ascii');
+  header.writeUInt32LE(data.length, 40);
+  return Buffer.concat([header, data]);
+}
+
 describe('pipeline result cache', () => {
   function fakeContent(): ContentRepo {
     return {
@@ -315,9 +339,9 @@ describe('pipeline result cache', () => {
       },
     } as unknown as SupabaseClient;
   }
-  const workingTts = { enabled: true, synthesize: async () => Buffer.from('wav-bytes') };
+  const workingTts = { enabled: true, synthesize: async () => fakeWav() };
 
-  function makeService(over: { cache?: LessonCacheRepo; tts?: typeof workingTts; client: MessagesClient }) {
+  function makeService(over: { cache?: LessonCacheRepo; tts?: TtsClient; client: MessagesClient }) {
     return createLessonService({
       anthropic: over.client,
       models: { generation: 'claude-haiku-4-5', topicId: 'claude-sonnet-4-6' },
@@ -327,6 +351,131 @@ describe('pipeline result cache', () => {
       db: fakeStorageDb(),
     });
   }
+
+  it('synthesizes every unit by ITS language, not the lesson\'s (Part 02 §5)', async () => {
+    const script = {
+      ...validScript,
+      beats: [
+        { id: 1, type: 'formal_beat', style: 'title', term: 'Present Perfect' },
+        {
+          id: 2,
+          type: 'formal_beat',
+          style: 'common_mistake',
+          wrong: 'I have visit Samarkand.',
+          correct: 'I have visited Samarkand.',
+          note: 'После have нужно причастие прошедшего времени, а не обычная форма.',
+        },
+        { id: 3, type: 'story_beat', narration: 'Это короткое повествование на русском языке.', doodles: [] },
+      ],
+      quiz_intro: 'Хорошо, посмотрим, что запомнилось.',
+    };
+    const spoken: Array<{ text: string; language: string }> = [];
+    const recordingTts = {
+      enabled: true,
+      synthesize: async (text: string, language: string) => {
+        spoken.push({ text, language });
+        return fakeWav();
+      },
+    };
+    const { client } = mockAnthropic([JSON.stringify(script)]);
+    const service = makeService({ client, tts: recordingTts });
+    const res = await service.getLesson({ topicId: topic.topic_id, language: 'ru' });
+    expect(res).toMatchObject({ ok: true });
+
+    // The English-locked fields route to the English voice even inside a Russian
+    // lesson; the localized ones route to Russian. That split is the whole reason
+    // language lives on the unit rather than the beat.
+    //
+    // Compared as a set: clips are synthesized concurrently, so completion order
+    // carries no meaning — the text→language pairing is what matters. Playback
+    // order is fixed by the `speech` arrays, asserted separately below.
+    const key = (u: { text: string; language: string }) => `${u.language}::${u.text}`;
+    expect(spoken.map(key).sort()).toEqual(
+      [
+        { text: 'Present Perfect', language: 'en' },
+        { text: 'I have visit Samarkand.', language: 'en' },
+        { text: 'I have visited Samarkand.', language: 'en' },
+        { text: 'После have нужно причастие прошедшего времени, а не обычная форма.', language: 'ru' },
+        { text: 'Это короткое повествование на русском языке.', language: 'ru' },
+        { text: 'Хорошо, посмотрим, что запомнилось.', language: 'ru' },
+      ]
+        .map(key)
+        .sort(),
+    );
+
+    // Playback order within a beat is the board's reading order: the wrong form,
+    // then the fix, then the explanation.
+    const mistake = res.ok ? res.boardScript.beats.find((b) => b.type === 'formal_beat' && b.style === 'common_mistake') : undefined;
+    expect(mistake?.speech?.map((u) => u.text)).toEqual([
+      'I have visit Samarkand.',
+      'I have visited Samarkand.',
+      'После have нужно причастие прошедшего времени, а не обычная форма.',
+    ]);
+  });
+
+  it('never speaks the end-of-topic test itself', async () => {
+    const spoken: string[] = [];
+    const recordingTts = {
+      enabled: true,
+      synthesize: async (text: string) => {
+        spoken.push(text);
+        return fakeWav();
+      },
+    };
+    const { client } = mockAnthropic([JSON.stringify(validScript)]);
+    const service = makeService({ client, tts: recordingTts });
+    await service.getLesson({ topicId: topic.topic_id, language: 'uz' });
+
+    for (const q of validQuiz ?? []) {
+      expect(spoken).not.toContain(q.question);
+      for (const option of q.options ?? []) expect(spoken).not.toContain(option);
+    }
+    // ...but the hand-off line into it IS spoken.
+    expect(spoken).toContain(validScript.quiz_intro);
+  });
+
+  it('keys the cache by EFFECTIVE language: a C1 topic collapses en/uz/ru to one row', async () => {
+    // Part 01 §1 — C1 is fully English whatever the student selected, so all
+    // three requests must share a single cached English row, not generate three.
+    const c1Topic: TopicOutline = { ...topic, topic_id: 'c1_inversion', level: 'C1' };
+    const c1Content: ContentRepo = { ...fakeContent(), getTopic: async () => c1Topic };
+    const keys: string[] = [];
+    const store = new Map<string, BoardScript>();
+    const cache: LessonCacheRepo = {
+      get: async (t, src, l) => {
+        keys.push(l);
+        return store.get(`${t}:${src}:${l}`) ?? null;
+      },
+      put: async (t, src, l, script) => void store.set(`${t}:${src}:${l}`, script),
+    };
+
+    const { client, calls } = mockAnthropic([JSON.stringify({ ...validScript, topic_id: 'c1_inversion', level: 'C1' })]);
+    const service = createLessonService({
+      anthropic: client,
+      models: { generation: 'claude-haiku-4-5', topicId: 'claude-sonnet-4-6' },
+      content: c1Content,
+      cache,
+      tts: workingTts,
+      db: fakeStorageDb(),
+    });
+
+    expect(await service.getLesson({ topicId: 'c1_inversion', language: 'ru' })).toMatchObject({ cached: false });
+    expect(await service.getLesson({ topicId: 'c1_inversion', language: 'uz' })).toMatchObject({ cached: true });
+    expect(await service.getLesson({ topicId: 'c1_inversion', language: 'en' })).toMatchObject({ cached: true });
+
+    expect(keys).toEqual(['en', 'en', 'en']); // never looked up under ru/uz
+    expect(store.size).toBe(1);
+    expect(calls).toHaveLength(1); // generated once, not three times
+  });
+
+  it('keeps A1–B2 lessons separated per language', async () => {
+    const { client, calls } = mockAnthropic([JSON.stringify(validScript)]);
+    const service = makeService({ client });
+
+    await service.getLesson({ topicId: topic.topic_id, language: 'uz' });
+    await service.getLesson({ topicId: topic.topic_id, language: 'en' });
+    expect(calls).toHaveLength(2); // B1 — no collapsing
+  });
 
   it('generates + audios on a miss, then serves the second request from cache', async () => {
     const { client, calls } = mockAnthropic([JSON.stringify(validScript)]);

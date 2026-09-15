@@ -25,7 +25,24 @@ function sanitizePatch(body: unknown): ProgressPatch | null {
     if (typeof b.mastered !== 'boolean') return null;
     patch.mastered = b.mastered;
   }
+  if (b.retest_round !== undefined) {
+    if (typeof b.retest_round !== 'number' || b.retest_round < 0) return null;
+    patch.retest_round = b.retest_round;
+  }
+  // `missed_fingerprints` is deliberately NOT accepted from the client — it's
+  // derived server-side from `missed_quiz_question_ids` (see the route), so a
+  // client can't hand itself an easier retest by naming its own set.
   return patch;
+}
+
+/** Quiz ids the client reports as missed, for the server to fingerprint. */
+function missedIds(body: unknown): { ids: number[]; language: string } | null {
+  if (typeof body !== 'object' || body === null) return null;
+  const b = body as Record<string, unknown>;
+  if (b.missed_quiz_question_ids === undefined) return null;
+  if (!Array.isArray(b.missed_quiz_question_ids)) return null;
+  const ids = b.missed_quiz_question_ids.filter((n): n is number => typeof n === 'number');
+  return { ids, language: typeof b.language === 'string' ? b.language : 'en' };
 }
 
 export function progressRoutes(deps: AppDeps): Router {
@@ -45,6 +62,16 @@ export function progressRoutes(deps: AppDeps): Router {
     if (patch === null) {
       res.status(400).json({ error: 'invalid progress fields' });
       return;
+    }
+    // A reported quiz result carries which questions were missed; resolve them
+    // to durable fingerprints here rather than trusting client-supplied hashes.
+    const missed = missedIds(req.body);
+    if (missed) {
+      patch.missed_fingerprints = await deps.lessons.fingerprintMissed(
+        req.params.topicId,
+        missed.language as Parameters<typeof deps.lessons.fingerprintMissed>[1],
+        missed.ids,
+      );
     }
     const record = await deps.progress.upsert(req.telegramId!, req.params.topicId, patch);
     res.json({ progress: record });
