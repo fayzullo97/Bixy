@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bixy animation preview v2</title>
+<style>
+  :root {
+    --bg: #F7F5F2;
+    --panel: #FFFFFF;
+    --ink: #2A2A2E;
+    --accent: #7950F4;
+    --line: #E6E2DC;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 60px;
+  }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  p.sub {
+    font-size: 13px; color: #6b6b70; margin: 0 0 20px;
+    text-align: center; max-width: 480px;
+  }
+  .stage {
+    background: var(--panel);
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    padding: 30px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+  }
+  .stage svg { width: min(70vw, 300px); height: auto; display: block; overflow: visible; }
+
+  #bixy-wrap { transform-box: fill-box; transform-origin: 50% 50%; }
+  #bixy-wrap.floating { animation: float 3s ease-in-out infinite; }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+
+  #body-path { transform-box: fill-box; transform-origin: 50% 50%; }
+  #body-path.breathing { animation: breathe 3s ease-in-out infinite; }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1, 1) skewX(0deg); }
+    50% { transform: scale(1.018, 0.982) skewX(0.6deg); }
+  }
+
+  #flip-wrap {
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    transition: transform 0.35s cubic-bezier(.3,.6,.3,1);
+  }
+  #face-shift { transition: transform 0.35s cubic-bezier(.3,.6,.3,1); }
+
+  .eye-path { transform-box: fill-box; transform-origin: 50% 50%; transition: transform 0.09s ease-in; }
+  .eye-path.blink { transform: scaleY(0.08); }
+
+  #bixy-wrap.jumping { animation: jump 0.62s cubic-bezier(.3,.2,.2,1) 1; }
+  @keyframes jump {
+    0%   { transform: scale(1, 1) translateY(0); }
+    18%  { transform: scale(1.1, 0.82) translateY(4px); }
+    45%  { transform: scale(0.88, 1.22) translateY(-26px); }
+    70%  { transform: scale(1.05, 0.94) translateY(2px); }
+    85%  { transform: scale(0.97, 1.04) translateY(-4px); }
+    100% { transform: scale(1, 1) translateY(0); }
+  }
+
+  .controls {
+    width: min(92vw, 460px);
+    margin-top: 22px;
+    background: var(--panel);
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    padding: 16px 18px;
+  }
+  .section-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: #9b9ba0; font-weight: 700; margin: 14px 0 8px;
+  }
+  .section-title:first-child { margin-top: 0; }
+  .row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 10px;
+  }
+  .row label { font-size: 13px; font-weight: 600; }
+  .row .val { font-size: 12px; color: var(--accent); font-weight: 700; min-width: 40px; text-align: right; }
+  input[type="range"] { flex: 1; accent-color: var(--accent); }
+  button {
+    border: none; border-radius: 10px; padding: 10px 12px;
+    font-size: 13px; font-weight: 600; cursor: pointer; flex: 1;
+  }
+  .btnrow { display: flex; gap: 8px; }
+  .btn-accent { background: var(--accent); color: white; }
+  .btn-soft { background: #EFEAFB; color: var(--accent); }
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .toggle-row label { font-size: 13px; font-weight: 600; }
+  .note { font-size: 11.5px; color: #9b9ba0; margin-top: 4px; }
+</style>
+</head>
+<body>
+<h1>Bixy — animation preview v2</h1>
+<p class="sub">One character, real transform everywhere — body, mouth, and eyes all morph point-by-point between calm and angry (no stacked images, no crossfade). Gaze direction moves eyes/mouth/sparkle together; character no longer flips.</p>
+<p class="sub" style="margin-top:-12px;"><b>Always running:</b> Float, Breathe, Blink, Look-Around, Sparkle-Glow. <b>Triggerable below:</b> Jump, Angry-Morph.</p>
+
+<div class="stage">
+<svg viewBox="0 0 245 193" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <filter id="sparkle-blur" x="-100%" y="-100%" width="300%" height="300%">
+    <feGaussianBlur stdDeviation="9"/>
+  </filter>
+  <filter id="filter-eye-left" x="75" y="45" width="45" height="55" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+    <feFlood flood-opacity="0" result="BackgroundImageFix"/><feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset/><feGaussianBlur stdDeviation="3.5"/><feComposite in2="hardAlpha" operator="out"/><feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0"/><feBlend mode="normal" in2="BackgroundImageFix" result="e1"/><feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset/><feGaussianBlur stdDeviation="2.9"/><feComposite in2="hardAlpha" operator="out"/><feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.63 0"/><feBlend mode="normal" in2="e1" result="e2"/><feBlend mode="normal" in="SourceGraphic" in2="e2" result="shape"/>
+  </filter>
+  <filter id="filter-eye-right" x="120" y="45" width="45" height="55" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+    <feFlood flood-opacity="0" result="BackgroundImageFix"/><feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset/><feGaussianBlur stdDeviation="3.5"/><feComposite in2="hardAlpha" operator="out"/><feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0"/><feBlend mode="normal" in2="BackgroundImageFix" result="e1"/><feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset/><feGaussianBlur stdDeviation="2.9"/><feComposite in2="hardAlpha" operator="out"/><feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.63 0"/><feBlend mode="normal" in2="e1" result="e2"/><feBlend mode="normal" in="SourceGraphic" in2="e2" result="shape"/>
+  </filter>
+  <filter id="filter-mouth" x="90" y="85" width="60" height="45" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+    <feFlood flood-opacity="0" result="BackgroundImageFix"/><feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset/><feGaussianBlur stdDeviation="3.5"/><feComposite in2="hardAlpha" operator="out"/><feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0"/><feBlend mode="normal" in2="BackgroundImageFix" result="e1"/><feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset/><feGaussianBlur stdDeviation="2.9"/><feComposite in2="hardAlpha" operator="out"/><feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.63 0"/><feBlend mode="normal" in2="e1" result="e2"/><feBlend mode="normal" in="SourceGraphic" in2="e2" result="shape"/>
+  </filter>
+</defs>
+
+<g id="bixy-wrap" class="floating">
+  <g id="flip-wrap">
+
+    <path id="sparkle-path" filter="url(#sparkle-blur)" fill="#C06CF7" fill-opacity="0.55"/>
+
+    <path id="body-path" class="breathing" fill="#7950F4" fill-opacity="0.57"/>
+
+    <g id="face-shift">
+      <g filter="url(#filter-eye-left)">
+        <path id="eye-left-path" class="eye-path" stroke="white" stroke-width="12" stroke-linecap="round" fill="none"/>
+      </g>
+      <g filter="url(#filter-eye-right)">
+        <path id="eye-right-path" class="eye-path" stroke="white" stroke-width="12" stroke-linecap="round" fill="none"/>
+      </g>
+      <g filter="url(#filter-mouth)">
+        <path id="mouth-path" stroke="white" stroke-width="9" stroke-linecap="round" fill="none"/>
+      </g>
+    </g>
+
+  </g>
+</g>
+</svg>
+</div>
+
+<div class="controls">
+  <div class="section-title">Standing rule (§10) — suppresses Look-Around</div>
+  <div class="toggle-row">
+    <label>Bixy is talking (Look-Around pauses, front only)</label>
+    <input type="checkbox" id="talkingToggle">
+  </div>
+
+  <div class="section-title">Situational</div>
+  <div class="btnrow" style="margin-bottom:10px;">
+    <button class="btn-accent" id="jumpBtn">Trigger Jump</button>
+  </div>
+  <div class="row">
+    <label>Angry-Morph</label>
+    <input type="range" id="angerSlider" min="0" max="100" value="0">
+    <span class="val" id="angerVal">0%</span>
+  </div>
+  <div class="btnrow">
+    <button class="btn-soft" id="angerSpike">Trigger Angry-Morph spike (12s decay)</button>
+  </div>
+  <p class="note">Body, mouth, and eyes all genuinely morph now — the calm eye curve was split into two segments (same shape, exact same curve, just an added point) so it structurally matches the angry eye's two-segment shape, enabling a real point-by-point transform instead of two paths stacked on top of each other.</p>
+</div>
+
+<script>
+// ---- path data (calm coords already shifted +2,+1 to align with angry canvas) ----
+const BODY_CALM = "M60.2383 30.0832C73.7135 9.32787 102.559 -2.62046 133.642 1.98167C163.968 6.47198 187.69 25.4253 195.219 48.4221C196.139 48.3729 197.066 48.345 198 48.345C222.853 48.345 243 66.0298 243 87.8449C243 106.111 228.875 121.478 209.689 125.996C209.894 128.082 210 130.2 210 132.345C210 164.93 185.823 191.345 156 191.345C139.141 191.345 124.088 182.904 114.186 169.679C105.981 175.175 96.3294 178.345 86 178.345C56.1766 178.345 32 151.93 32 119.345C32 114.588 32.5155 109.963 33.4883 105.532C15.2375 100.496 2 85.5277 2 67.8449C2.00017 46.0298 22.1473 28.345 47 28.345C51.6074 28.345 56.0527 28.954 60.2383 30.0832Z";
+const BODY_ANGRY = "M50.8066 47.6162C56.1942 15.9638 92.0436 -4.85903 131.496 0.982407C161.963 5.4935 185.763 24.6011 193.176 47.7412C195.401 47.444 197.68 47.29 200 47.29C224.853 47.29 245 64.9748 245 86.79C245 103.566 233.085 117.896 216.278 123.623C216.753 126.768 217 129.998 217 133.29C217 165.875 192.823 192.29 163 192.29C147.407 192.29 133.357 185.068 123.5 173.52C113.643 185.068 99.5934 192.29 84 192.29C54.1766 192.29 30 165.875 30 133.29C30 130.21 30.2156 127.186 30.6318 124.233C12.8247 118.971 0 104.195 0 86.79C1.17435e-05 64.9748 20.1472 47.29 45 47.29C46.9676 47.29 48.9057 47.4012 50.8066 47.6162Z";
+const MOUTH_CALM = "M110 104.368C114.652 110.543 121.116 113.06 127.232 104.43";
+const MOUTH_ANGRY = "M106 108.43C112.5 108.43 133.5 108.43 138 108.429";
+const SPARKLE_D = "M116.859 33.5423C119.191 29.6674 124.809 29.6674 127.141 33.5423L138.464 52.3574C139.302 53.7495 140.668 54.7423 142.251 55.1089L163.644 60.0636C168.05 61.084 169.786 66.4268 166.821 69.842L152.426 86.4251C151.361 87.652 150.839 89.2584 150.98 90.8771L152.878 112.754C153.269 117.26 148.725 120.562 144.56 118.798L124.341 110.232C122.845 109.598 121.155 109.598 119.659 110.232L99.4397 118.798C95.2755 120.562 90.7306 117.26 91.1216 112.754L93.0203 90.8771C93.1607 89.2584 92.6388 87.652 91.5737 86.4251L77.1786 69.842C74.2139 66.4268 75.9499 61.084 80.3558 60.0636L101.749 55.1089C103.332 54.7423 104.698 53.7495 105.536 52.3574L116.859 33.5423Z";
+
+const EYE_LEFT_ANGRY = "M96 62.5C98 64 106.966 71 106.966 74C106.966 76.5 98 85.5 96 87.5";
+const EYE_RIGHT_ANGRY = "M153.5 63C149 66.5 141 72 141 75C141 78 149.5 85 153.5 88.5";
+
+function makeMorpher(calmD, angryD) {
+  const numRe = /-?\d*\.?\d+(?:e-?\d+)?/gi;
+  const calmNums = calmD.match(numRe).map(Number);
+  const angryNums = angryD.match(numRe).map(Number);
+  const template = calmD.split(numRe);
+  return function(t) {
+    let out = template[0];
+    for (let i = 0; i < calmNums.length; i++) {
+      const v = calmNums[i] + (angryNums[i] - calmNums[i]) * t;
+      out += (Math.round(v * 1000) / 1000) + template[i + 1];
+    }
+    return out;
+  };
+}
+
+function lerpColor(hex1, hex2, t) {
+  const c1 = hex1.match(/\w\w/g).map(h => parseInt(h, 16));
+  const c2 = hex2.match(/\w\w/g).map(h => parseInt(h, 16));
+  const c = c1.map((v, i) => Math.round(v + (c2[i] - v) * t));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+// ---- procedural bow-based eyes: straight at bow=0 (matches the new source
+// asset exactly), curves toward whichever side bow is signed toward. Split
+// into 2 segments via exact Bezier subdivision so it structurally matches
+// the angry eye's 2-segment shape and both can morph point-by-point too.
+function mid(p, q) { return [(p[0]+q[0])/2, (p[1]+q[1])/2]; }
+function subdivideCubic(p0, p1, p2, p3) {
+  const a = mid(p0,p1), b = mid(p1,p2), c = mid(p2,p3);
+  const d = mid(a,b), e = mid(b,c), f = mid(d,e);
+  return [p0, a, d, f, e, c, p3]; // 7 points: seg1(p0,a,d,f) seg2(f,e,c,p3)
+}
+function fmt(v) { return Math.round(v * 1000) / 1000; }
+function bowEyeD(anchor, bow) {
+  const { x, y0, cy1, cy2, y1 } = anchor;
+  const pts = subdivideCubic([x,y0], [x+bow,cy1], [x+bow,cy2], [x,y1]);
+  const [p0,p1,p2,p3,p4,p5,p6] = pts;
+  return `M${fmt(p0[0])} ${fmt(p0[1])}C${fmt(p1[0])} ${fmt(p1[1])} ${fmt(p2[0])} ${fmt(p2[1])} ${fmt(p3[0])} ${fmt(p3[1])}C${fmt(p4[0])} ${fmt(p4[1])} ${fmt(p5[0])} ${fmt(p5[1])} ${fmt(p6[0])} ${fmt(p6[1])}`;
+}
+
+const LEFT_EYE_ANCHOR  = { x: 96, y0: 58, cy1: 63.5, cy2: 74, y1: 85 };
+const RIGHT_EYE_ANCHOR = { x: 139, y0: 59, cy1: 64.5, cy2: 82, y1: 85.5 };
+const BOW_AMOUNT = { front: 0, left: -7, right: 7, 'top-left': -6, 'top-right': 6 };
+
+let currentBowL = 0;
+let currentBowR = 0;
+
+const morphBody = makeMorpher(BODY_CALM, BODY_ANGRY);
+const morphMouth = makeMorpher(MOUTH_CALM, MOUTH_ANGRY);
+
+const bodyPathEl = document.getElementById('body-path');
+const mouthPathEl = document.getElementById('mouth-path');
+const eyeLeftEl = document.getElementById('eye-left-path');
+const eyeRightEl = document.getElementById('eye-right-path');
+const sparklePathEl = document.getElementById('sparkle-path');
+
+sparklePathEl.setAttribute('d', SPARKLE_D);
+
+let currentAnger = 0;
+
+function updateEyes() {
+  const calmLeftD = bowEyeD(LEFT_EYE_ANCHOR, currentBowL);
+  const calmRightD = bowEyeD(RIGHT_EYE_ANCHOR, currentBowR);
+  eyeLeftEl.setAttribute('d', makeMorpher(calmLeftD, EYE_LEFT_ANGRY)(currentAnger));
+  eyeRightEl.setAttribute('d', makeMorpher(calmRightD, EYE_RIGHT_ANGRY)(currentAnger));
+}
+
+function applyAnger(t) {
+  currentAnger = t;
+  bodyPathEl.setAttribute('d', morphBody(t));
+  mouthPathEl.setAttribute('d', morphMouth(t));
+  bodyPathEl.setAttribute('fill', lerpColor('7950F4', 'F45084', t));
+  sparklePathEl.setAttribute('fill', lerpColor('C06CF7', '870204', t));
+  updateEyes();
+  angerVal.textContent = Math.round(t * 100) + '%';
+}
+
+// ---- look-around: translate eyes/mouth/sparkle together, plus bow the
+// eyes toward the gaze direction (straight when looking front) ----
+const faceShift = document.getElementById('face-shift');
+const eyePaths = document.querySelectorAll('.eye-path');
+
+const LOOK_TARGETS = {
+  front:      { x: 0,  y: 0  },
+  left:       { x: -7, y: 0  },
+  right:      { x: 7,  y: 0  },
+  'top-left': { x: -6, y: -5 },
+  'top-right':{ x: 6,  y: -5 },
+};
+const LOOK_POOL = ['front','front','left','front','right','front','top-left','front','top-right'];
+
+let looking = true;
+
+function isAddressingStudent() {
+  return talkingToggle.checked || parseInt(angerSlider.value, 10) > 0;
+}
+
+function applyLook(name) {
+  const t = LOOK_TARGETS[name];
+  faceShift.style.transform = `translate(${t.x}px, ${t.y}px)`;
+  currentBowL = BOW_AMOUNT[name];
+  currentBowR = BOW_AMOUNT[name];
+  updateEyes();
+}
+
+function lookLoop() {
+  if (!looking) return;
+  if (isAddressingStudent()) {
+    applyLook('front');
+    setTimeout(lookLoop, 400);
+    return;
+  }
+  const target = LOOK_POOL[Math.floor(Math.random() * LOOK_POOL.length)];
+  applyLook(target);
+  const hold = 700 + Math.random() * 1400;
+  setTimeout(lookLoop, hold);
+}
+
+function blinkLoop() {
+  eyePaths.forEach(p => p.classList.add('blink'));
+  setTimeout(() => {
+    eyePaths.forEach(p => p.classList.remove('blink'));
+    const next = 2200 + Math.random() * 3200;
+    setTimeout(blinkLoop, next);
+  }, 130);
+}
+
+// ---- controls wiring ----
+const talkingToggle = document.getElementById('talkingToggle');
+const angerSlider = document.getElementById('angerSlider');
+const angerVal = document.getElementById('angerVal');
+const angerSpikeBtn = document.getElementById('angerSpike');
+const jumpBtn = document.getElementById('jumpBtn');
+const bixyWrap = document.getElementById('bixy-wrap');
+
+let decayRAF = null;
+
+jumpBtn.addEventListener('click', () => {
+  bixyWrap.classList.remove('jumping');
+  void bixyWrap.getBoundingClientRect();
+  bixyWrap.classList.add('jumping');
+});
+
+angerSlider.addEventListener('input', () => {
+  if (decayRAF) { cancelAnimationFrame(decayRAF); decayRAF = null; }
+  applyAnger(angerSlider.value / 100);
+});
+
+angerSpikeBtn.addEventListener('click', () => {
+  if (decayRAF) cancelAnimationFrame(decayRAF);
+  const durationMs = 12000;
+  const start = performance.now();
+  angerSlider.value = 100;
+  applyAnger(1);
+  function step(now) {
+    const elapsed = now - start;
+    const remaining = Math.max(0, 1 - elapsed / durationMs);
+    angerSlider.value = Math.round(remaining * 100);
+    applyAnger(remaining);
+    if (remaining > 0) {
+      decayRAF = requestAnimationFrame(step);
+    } else {
+      decayRAF = null;
+    }
+  }
+  decayRAF = requestAnimationFrame(step);
+});
+
+applyAnger(0);
+lookLoop();
+blinkLoop();
+</script>
+</body>
+</html>
