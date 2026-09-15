@@ -48,8 +48,14 @@ narrated voice, check-in questions, and an end-of-topic quiz.
   adapts to context (casual in light moments, measured while explaining, more
   patient only after a repeated struggle pattern, not one hard topic); stays
   in-character if asked whether it's real
-- Greeting: no recency-based logic actually shipped, despite being designed
-  in v1 — the full mechanism is being (re)built in Iteration 2 (see Part 05)
+- Greeting: the day-boundary full/short greeting (full greeting once per
+  day, short "welcome back" on later same-day visits) **did ship and is
+  live** — confirmed via code trace (`greeting.ts`, `last_greeted_at` from
+  migration 0005, `POST /me/greeting`, wired into `PathBoardScreen`). This
+  corrects an earlier version of this doc that claimed the whole mechanism
+  never shipped — that was too broad. The piece that was actually missing
+  was narrower: the one-time first-meeting sequence (introduction +
+  get-to-know-you conversation), built in Part 05.
 
 **Core learning flow**
 - Sign-in → level check (15 fill-in-the-blank questions, tiered, early-stop
