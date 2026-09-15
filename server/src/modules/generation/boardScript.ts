@@ -1,6 +1,62 @@
 // Server-side board-script types + validator (§8.2), ported from the client
-// renderer so generated scripts are validated before storage. Adds `audio_url`
-// on story beats, populated by the TTS step.
+// renderer so generated scripts are validated before storage. Adds `speech`,
+// the synthesized narration, populated by the TTS step.
+
+import type { Language } from './systemPrompt.js';
+
+/**
+ * One spoken clip: the exact text voiced, the language it's voiced in, and the
+ * stored audio. Part 02 §5 makes the formal track spoken too, and a formal beat
+ * mixes languages by design (Part 01 §1 — an English `sentence` alongside a
+ * localized `note`), so language belongs on the UNIT, not the beat. That's what
+ * lets each clip route to the right provider (Part 01 §2).
+ *
+ * Derived mechanically from the beat's own fields rather than generated — the
+ * model is never asked to restate what it already wrote, so there is no new way
+ * for generation to drift from the board.
+ *
+ * Part 02 §3 extends this with per-sentence splitting and word timings; both are
+ * additive to this shape.
+ */
+export interface SpokenUnit {
+  /** Exactly the text voiced in this clip. */
+  text: string;
+  /** Which language it is voiced in — drives provider routing (Part 01 §2). */
+  language: Language;
+  /** Public URL of the synthesized WAV (filled in by the TTS step). */
+  audio_url?: string;
+  /**
+   * The sentences `audio_url` was spliced from, with exact spoken durations and
+   * offsets (Part 02 §3). Sentences are synthesized separately and rejoined with
+   * a 400ms gap, so these offsets are exact rather than estimated — they back
+   * the proportional-timing fallback when Whisper word alignment is unavailable.
+   */
+  sentences?: SentenceTiming[];
+  /** Total length of `audio_url`, gaps included. */
+  duration_ms?: number;
+  /**
+   * Word-level playback timings driving the rolling subtitle window (Part 02
+   * §3). Present only where the window can be trusted: story narration in a
+   * Whisper-supported language. Absent means the client shows the full text
+   * instead — which is what Uzbek lessons do until Whisper accuracy on Aisha
+   * audio has its own test.
+   */
+  words?: WordTiming[];
+}
+
+/** One script word with the playback time the subtitle should reveal it at. */
+export interface WordTiming {
+  text: string;
+  start_ms: number;
+  end_ms: number;
+}
+
+/** One sentence's slice of a spliced clip (Part 02 §3). */
+export interface SentenceTiming {
+  text: string;
+  duration_ms: number;
+  start_ms: number;
+}
 
 export type DoodlePosition = 'left' | 'center' | 'right';
 
@@ -16,8 +72,9 @@ export interface StoryBeat {
   type: 'story_beat';
   narration: string;
   doodles: DoodleRef[];
-  /** Public URL of the synthesized narration WAV (filled in by the TTS step). */
-  audio_url?: string;
+  /** Synthesized narration (filled in by the TTS step). Replaces v1's single
+   *  `audio_url`: every beat type now narrates through the same field. */
+  speech?: SpokenUnit[];
 }
 
 export type ContentStyle =
@@ -28,17 +85,106 @@ export type ContentStyle =
   | 'common_mistake'
   | 'recap_example';
 
-export interface ContentFormalBeat {
+// Formal beats are split per-field by style (Part 01 §1) so the language rule is
+// STRUCTURAL, not a prompt convention: every field below belongs to exactly one
+// language, always. English-locked fields carry the material being taught
+// (`term`, `formula`, `sentence`, `emphasis`, `wrong`, `correct`); `note` carries
+// Bixy's wording ABOUT that material and follows the effective content language.
+//
+// The alternative — localizing a whole beat by style and trusting the model to
+// keep an English example correctly embedded inside otherwise-translated prose —
+// is the exact failure mode this project keeps hitting, and can't be validated
+// mechanically. Separate fields can.
+
+interface BaseFormalBeat {
   id: number;
   type: 'formal_beat';
-  style: ContentStyle;
-  content: string;
-  emphasis?: string;
+  /** Synthesized narration of this beat's own fields (Part 02 §5), in board
+   *  order. Absent on a check-in means only the stem is voiced; the options stay
+   *  silent by design. Filled in by the TTS step, never by the model. */
+  speech?: SpokenUnit[];
 }
 
-export interface CheckInBeat {
-  id: number;
-  type: 'formal_beat';
+/** The topic name — grammar terminology, so English at every level. */
+export interface TitleBeat extends BaseFormalBeat {
+  style: 'title';
+  term: string;
+}
+
+/** The rule's shape, e.g. "have / has + past participle". */
+export interface FormulaBeat extends BaseFormalBeat {
+  style: 'formula';
+  formula: string;
+  note?: string;
+}
+
+/** Pure commentary about the rule — no English-locked field, so `note` is all of it. */
+export interface ExplanationBeat extends BaseFormalBeat {
+  style: 'explanation';
+  note: string;
+}
+
+/** A correct English example sentence. */
+export interface ExampleBeat extends BaseFormalBeat {
+  style: 'example';
+  sentence: string;
+  note?: string;
+}
+
+/** A discovery sentence written out, with the grammar marker in `emphasis`. */
+export interface RecapBeat extends BaseFormalBeat {
+  style: 'recap_example';
+  sentence: string;
+  emphasis?: string;
+  note?: string;
+}
+
+/**
+ * The wrong/correct pair, each in its own field. The reference outlines state
+ * these inline in prose ("saying 'Is cold today' instead of 'It's cold today' —
+ * English always needs the subject"); splitting them is what lets the surrounding
+ * explanation localize without dragging the two English sentences along with it.
+ */
+export interface MistakeBeat extends BaseFormalBeat {
+  style: 'common_mistake';
+  wrong: string;
+  correct: string;
+  note: string;
+}
+
+export type ContentFormalBeat =
+  | TitleBeat
+  | FormulaBeat
+  | ExplanationBeat
+  | ExampleBeat
+  | RecapBeat
+  | MistakeBeat;
+
+/** Fields that are ALWAYS English — the target-language material (Part 01 §1). */
+export const ENGLISH_FIELDS = ['term', 'formula', 'sentence', 'emphasis', 'wrong', 'correct'] as const;
+/** Fields that ALWAYS follow the effective content language. */
+export const LOCALIZED_FIELDS = ['note'] as const;
+
+/**
+ * Bumped whenever a change to this contract makes previously generated scripts
+ * unservable. Part of the result-cache key, so stale rows are never matched
+ * instead of needing a bulk delete — and the client validator never receives an
+ * old-shape script it would reject.
+ *
+ * v1 — Part 01 §1: formal beats split per-field by style, cache keyed by
+ *      effective content language.
+ * v2 — Part 02 §3/§5: every beat narrates via `speech`, per-sentence splice,
+ *      word timings, `quiz_intro`.
+ *
+ * Part 02's own change would self-heal without this: `narrationComplete` now
+ * covers the whole script, so a v1-shaped row fails the gate and regenerates on
+ * its own. The bump is deliberate anyway — a row that stops matching on its
+ * VERSION is an explicit, greppable signal, whereas one that silently fails a
+ * completeness predicate looks identical to a transient TTS outage in the logs.
+ */
+export const BOARD_SCRIPT_RULE_VERSION = 2;
+
+export interface CheckInBeat extends BaseFormalBeat {
   style: 'check_in_question';
   question: string;
   options: string[];
@@ -76,6 +222,37 @@ export interface BoardScript {
   /** The end-of-topic test (§8.4). Optional in the reader (a legacy/quiz-less
    *  script still renders); generation asserts it separately. */
   quiz?: QuizQuestion[];
+  /**
+   * Spoken transition into the end-of-topic test (Part 02 §5) — e.g. "Okay,
+   * let's see how much you understand." Model-generated, so it's phrased in
+   * Bixy's voice, and written in the effective content language like any other
+   * localized field (Part 01 §1). The test itself stays silent.
+   */
+  quiz_intro?: string;
+  /** Synthesized `quiz_intro` (filled in by the TTS step). */
+  quiz_intro_speech?: SpokenUnit[];
+  /**
+   * In-persona reactions to a failing topic-test score (Part 04 §6), pre-generated
+   * per failing tier so the announcement is in Bixy's own words without a model
+   * round-trip at the exact moment a student has just failed.
+   */
+  score_reactions?: ScoreReactions;
+}
+
+/**
+ * A handful of phrasings per failing tier. Each contains the literal token
+ * `{score}`, substituted with the student's percentage at display time — which is
+ * also why these are text-only rather than spoken: the number isn't known until
+ * the moment of failure, so the line can't be synthesized in advance, and
+ * synthesizing six variants per lesson to use one would be waste.
+ *
+ * Written in the effective content language, like any other Bixy wording.
+ */
+export interface ScoreReactions {
+  /** Below 50% — the whole topic gets re-taught. */
+  reteach_all: string[];
+  /** 50–79% — only the missed parts get re-taught. */
+  reteach_missed: string[];
 }
 
 /** How many questions the end-of-topic test must have (§8.4, scaling with complexity). */
@@ -131,6 +308,8 @@ function parseDoodleRef(raw: unknown, where: string, knownElementIds?: Set<strin
   };
 }
 
+const QUIZ_TYPES: QuizQuestionType[] = ['multiple_choice', 'true_false', 'fill_in_the_blank'];
+
 function parseBeat(raw: unknown, index: number, knownElementIds?: Set<string>): Beat {
   const where = `beats[${index}]`;
   if (typeof raw !== 'object' || raw === null) fail(where, 'must be an object');
@@ -166,22 +345,72 @@ function parseBeat(raw: unknown, index: number, knownElementIds?: Set<string>): 
       };
     }
 
-    if (!(CONTENT_STYLES as string[]).includes(r.style as string)) {
-      fail(where, `unknown formal style ${JSON.stringify(r.style)}`);
+    // Tolerant reader, strict writer: each style's required fields are enforced
+    // (a miss is a generation miss we retry), and anything extra is dropped
+    // rather than carried through — the shapes below are built explicitly.
+    const optional = (field: string) => (r[field] !== undefined ? text(r[field], where, field) : undefined);
+
+    switch (r.style) {
+      case 'title':
+        return { id: r.id, type: 'formal_beat', style: 'title', term: text(r.term, where, 'term') };
+      case 'formula':
+        return {
+          id: r.id,
+          type: 'formal_beat',
+          style: 'formula',
+          formula: text(r.formula, where, 'formula'),
+          note: optional('note'),
+        };
+      case 'explanation':
+        return { id: r.id, type: 'formal_beat', style: 'explanation', note: text(r.note, where, 'note') };
+      case 'example':
+        return {
+          id: r.id,
+          type: 'formal_beat',
+          style: 'example',
+          sentence: text(r.sentence, where, 'sentence'),
+          note: optional('note'),
+        };
+      case 'recap_example':
+        return {
+          id: r.id,
+          type: 'formal_beat',
+          style: 'recap_example',
+          sentence: text(r.sentence, where, 'sentence'),
+          emphasis: optional('emphasis'),
+          note: optional('note'),
+        };
+      case 'common_mistake':
+        return {
+          id: r.id,
+          type: 'formal_beat',
+          style: 'common_mistake',
+          wrong: text(r.wrong, where, 'wrong'),
+          correct: text(r.correct, where, 'correct'),
+          note: text(r.note, where, 'note'),
+        };
+      default:
+        return fail(where, `unknown formal style ${JSON.stringify(r.style)}`);
     }
-    return {
-      id: r.id,
-      type: 'formal_beat',
-      style: r.style as ContentStyle,
-      content: text(r.content, where, 'content'),
-      emphasis: r.emphasis !== undefined ? text(r.emphasis, where, 'emphasis') : undefined,
-    };
   }
 
-  return fail(where, `unknown beat type ${JSON.stringify(r.type)}`);
+  // Naming the likely confusion matters: this string is fed straight back into
+  // the generation retry loop, and a bare "unknown beat type" left the model
+  // repeating the same style-as-type slip on every attempt.
+  if ((CONTENT_STYLES as string[]).includes(r.type as string) || r.type === 'check_in_question') {
+    return fail(
+      where,
+      `\`type\` must be "story_beat" or "formal_beat" — ${JSON.stringify(r.type)} is a \`style\`, not a type. Write { "type": "formal_beat", "style": ${JSON.stringify(r.type)}, ... }`,
+    );
+  }
+  if ((QUIZ_TYPES as string[]).includes(r.type as string)) {
+    return fail(
+      where,
+      `${JSON.stringify(r.type)} is a quiz question type. The end-of-topic test belongs ONLY in the top-level \`quiz\` array — remove it from \`beats\`.`,
+    );
+  }
+  return fail(where, `unknown beat type ${JSON.stringify(r.type)} (expected "story_beat" or "formal_beat")`);
 }
-
-const QUIZ_TYPES: QuizQuestionType[] = ['multiple_choice', 'true_false', 'fill_in_the_blank'];
 
 function parseQuizQuestion(raw: unknown, index: number, beatIds: Set<number>): QuizQuestion {
   const where = `quiz[${index}]`;
@@ -244,6 +473,25 @@ export function parseQuiz(raw: unknown, beatIds: Set<number>): QuizQuestion[] {
   return raw.map((q, i) => parseQuizQuestion(q, i, beatIds));
 }
 
+/**
+ * Reads the pre-generated failing-score reactions (Part 04 §6). Tolerant: a tier
+ * that came back short or malformed yields an empty list, and the board falls
+ * back to a plain announcement rather than failing a lesson over flavour text.
+ */
+function parseScoreReactions(raw: unknown): ScoreReactions {
+  const tier = (value: unknown, where: string): string[] => {
+    if (!Array.isArray(value)) return [];
+    return value
+      .filter((v): v is string => typeof v === 'string' && v.trim() !== '')
+      .map((v) => text(v, where, 'reaction'));
+  };
+  const r = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
+  return {
+    reteach_all: tier(r.reteach_all, 'score_reactions.reteach_all'),
+    reteach_missed: tier(r.reteach_missed, 'score_reactions.reteach_missed'),
+  };
+}
+
 /** Validates and normalizes a generated board script (§8.2). A `quiz`, when
  *  present, is validated against the beats it tags (§8.4); a script without one
  *  still parses so legacy/quiz-less lessons render. */
@@ -258,5 +506,8 @@ export function parseBoardScript(raw: unknown, knownElementIds?: Set<string>): B
     level: str(r.level, '', 'level'),
     beats,
     ...(r.quiz !== undefined ? { quiz: parseQuiz(r.quiz, beatIds) } : {}),
+    // `speech` is never read off model output — the TTS step derives and fills it.
+    ...(r.quiz_intro !== undefined ? { quiz_intro: text(r.quiz_intro, '', 'quiz_intro') } : {}),
+    ...(r.score_reactions !== undefined ? { score_reactions: parseScoreReactions(r.score_reactions) } : {}),
   };
 }
