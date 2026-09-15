@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, type DimensionValue } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { Beat } from './types';
 import type { DoodleCatalog } from './doodleCatalog';
 import { buildScene, type SceneColumn } from './sceneModel';
@@ -10,11 +10,19 @@ const FACE_H = 46;
 const OBJECT_H = 62;
 const BUBBLE_W = 190;
 
-const COLUMN_X: Record<SceneColumn['position'], DimensionValue> = {
-  left: '24%',
-  center: '50%',
-  right: '76%',
-};
+// Props attached to a person sit beside them, starting to their left. A second
+// prop on the same person used to land on exactly the same fixed offset as the
+// first and render on top of it; each now steps right by OBJECT_STEP so they
+// fan out instead. The step is a heuristic — a doodle's width comes from its own
+// aspect ratio and isn't known until it loads — so it's deliberately narrower
+// than OBJECT_H, letting props sit close (slightly overlapping) rather than
+// drifting far from the character they belong to.
+const OBJECT_LEFT = -44;
+const OBJECT_STEP = 52;
+
+// Fixed left→center→right slots so a doodle's `position` maps to the same third of
+// the panel whether or not the other columns are present.
+const SLOTS: SceneColumn['position'][] = ['left', 'center', 'right'];
 
 function Bubble({ url, text, animate }: { url: string; text: string; animate: boolean }) {
   const height = text.length > 26 ? 98 : 72;
@@ -45,17 +53,22 @@ export function Scene({
 }) {
   const scene = buildScene(beats, catalog);
   const url = (id: string): string | undefined => catalog.get(id)?.url;
+  const byPosition = new Map(scene.columns.map((c) => [c.position, c]));
+  const hasContent = scene.columns.length > 0;
 
+  // A row of three equal slots that sizes to its own content and bottom-aligns the
+  // columns (people share a ground line). No fixed height / absolute bottom anchor,
+  // so a tall panel can't overflow upward into the panel above it — panels simply
+  // stack downward, each self-contained, separated by a 50px gap (§ board cursor).
   return (
-    <View style={styles.scene}>
-      {scene.columns.map((col) => {
+    <View style={[styles.scene, hasContent && styles.sceneSpacing]}>
+      {SLOTS.map((position) => {
+        const col = byPosition.get(position);
+        if (!col) return <View key={`slot-${position}`} style={styles.column} />;
         const personUrl = col.personId ? url(col.personId) : undefined;
         const faceUrl = col.faceId ? url(col.faceId) : undefined;
         return (
-          <View
-            key={`col-${col.position}`}
-            style={[styles.column, { left: COLUMN_X[col.position] }]}
-          >
+          <View key={`col-${position}`} style={styles.column}>
             {col.bubble && url(col.bubble.id) ? (
               <Bubble
                 key={`b-${col.position}-${col.bubble.id}-${col.bubble.text}`}
@@ -90,7 +103,10 @@ export function Scene({
                 const objUrl = url(obj.element_id);
                 if (!objUrl) return null;
                 return (
-                  <View key={`o-${col.position}-${i}-${obj.element_id}`} style={styles.objectOverlay}>
+                  <View
+                    key={`o-${col.position}-${i}-${obj.element_id}`}
+                    style={[styles.objectOverlay, { left: OBJECT_LEFT + i * OBJECT_STEP }]}
+                  >
                     <DoodleSvg url={objUrl} height={OBJECT_H} animate={animate} />
                   </View>
                 );
@@ -104,17 +120,14 @@ export function Scene({
 }
 
 const styles = StyleSheet.create({
-  scene: { height: 320, alignSelf: 'stretch', position: 'relative' },
-  column: {
-    position: 'absolute',
-    bottom: 0,
-    width: BUBBLE_W,
-    transform: [{ translateX: -BUBBLE_W / 2 }],
-    alignItems: 'center',
-  },
+  scene: { flexDirection: 'row', alignItems: 'flex-end', alignSelf: 'stretch' },
+  // 50px breathing room below each drawn scene so the next block starts clear of it.
+  sceneSpacing: { marginBottom: 50 },
+  column: { flex: 1, alignItems: 'center' },
   personBox: { position: 'relative', alignItems: 'center', justifyContent: 'flex-end' },
   faceOverlay: { position: 'absolute', top: 4, left: 0, right: 0, alignItems: 'center' },
-  objectOverlay: { position: 'absolute', bottom: -2, left: -44 },
+  // `left` is set per-object at render time (see OBJECT_LEFT / OBJECT_STEP).
+  objectOverlay: { position: 'absolute', bottom: -2 },
   bubble: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
   fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   bubbleText: {
