@@ -45,6 +45,21 @@ export const env = {
   AISHA_MOOD: process.env.AISHA_MOOD ?? 'Neutral',
   NARRATION_BUCKET: process.env.NARRATION_BUCKET ?? 'narration',
 
+  // --- OpenAI TTS (Part 01 §2). Russian + English narration; Uzbek stays on
+  // Aisha. One provider for ru+en so a Russian narration carrying embedded
+  // English grammar terms is spoken in a single voice, no vendor seam. Optional:
+  // with no key, those two languages fail loudly rather than degrade silently.
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? '',
+  OPENAI_BASE_URL: process.env.OPENAI_BASE_URL ?? 'https://api.openai.com',
+  OPENAI_TTS_MODEL: process.env.OPENAI_TTS_MODEL ?? 'gpt-4o-mini-tts',
+  // Bixy is gender-ambiguous (Part 00), so the default voice is a neutral one.
+  OPENAI_TTS_VOICE: process.env.OPENAI_TTS_VOICE ?? 'alloy',
+  // Optional tone steer for gpt-4o-mini-tts. Empty = model default.
+  OPENAI_TTS_INSTRUCTIONS: process.env.OPENAI_TTS_INSTRUCTIONS ?? '',
+  // Word-level timings for the rolling subtitle window (Part 02 §3). whisper-1
+  // is the model that supports `timestamp_granularities: ["word"]`.
+  OPENAI_TRANSCRIBE_MODEL: process.env.OPENAI_TRANSCRIBE_MODEL ?? 'whisper-1',
+
   // DEV-ONLY sign-in that bypasses Telegram validation, so the app can be run
   // end-to-end locally before the production URL is registered with BotFather.
   // Force-disabled in production regardless of the flag — a belt-and-braces guard

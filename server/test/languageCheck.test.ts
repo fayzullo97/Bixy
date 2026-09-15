@@ -9,7 +9,7 @@ function script(narration: string): BoardScript {
     level: 'B1',
     beats: [
       { id: 1, type: 'story_beat', narration, doodles: [] },
-      { id: 2, type: 'formal_beat', style: 'title', content: 'Present Perfect' },
+      { id: 2, type: 'formal_beat', style: 'title', term: 'Present Perfect' },
     ],
   };
 }
