@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { JUMP_THROTTLE_MS, JUMP_TOTAL_MS, canJump, readLastJump } from './jump';
+import { JUMP_THROTTLE_MS, canJump, readLastJump } from './jump';
 
 const T0 = 1_700_000_000_000;
 
@@ -19,11 +19,6 @@ describe('jump throttle (Part 06 §10)', () => {
 
   it('is not locked out for an hour by a backwards clock', () => {
     expect(canJump(T0, T0 - 60_000)).toBe(true);
-  });
-
-  it('runs long enough to read as squash → launch → settle', () => {
-    expect(JUMP_TOTAL_MS).toBeGreaterThan(500);
-    expect(JUMP_TOTAL_MS).toBeLessThan(1200);
   });
 });
 

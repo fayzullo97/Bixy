@@ -6,6 +6,7 @@ import { OpenInTelegramScreen } from './src/screens/OpenInTelegramScreen';
 import { SignedInApp } from './src/screens/SignedInApp';
 import { DevBoardScreen } from './src/screens/DevBoardScreen';
 import { DevLevelCheckScreen } from './src/screens/DevLevelCheckScreen';
+import { DevBixyScreen } from './src/screens/DevBixyScreen';
 import { BoardHost } from './src/board/BoardHost';
 import type { Lang } from './src/i18n';
 
@@ -82,6 +83,23 @@ function DevTapToStart({ children }: { children: ReactNode }) {
   );
 }
 
+// DEV-ONLY: `?dev=bixy` renders the character (Part 06 §10) with the reference
+// preview's controls, for comparing the port against it. `anger=0..100` sets the
+// initial morph amount so a screenshot can be taken at a fixed value.
+function devBixyParams(): { anger: number } | null {
+  if (
+    Platform.OS !== 'web' ||
+    process.env.EXPO_PUBLIC_DEV_LOGIN !== '1' ||
+    typeof window === 'undefined'
+  ) {
+    return null;
+  }
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('dev') !== 'bixy') return null;
+  const anger = Number(params.get('anger') ?? 0);
+  return { anger: Number.isFinite(anger) ? Math.max(0, Math.min(1, anger / 100)) : 0 };
+}
+
 function Root() {
   const { status } = useAuth();
   // `loading` covers both restoring a saved session and the silent Mini App
@@ -98,6 +116,15 @@ function Root() {
 }
 
 export default function App() {
+  const bixy = devBixyParams();
+  if (bixy) {
+    return (
+      <View style={styles.devRoot}>
+        <StatusBar style="light" />
+        <DevBixyScreen anger={bixy.anger} />
+      </View>
+    );
+  }
   const levelCheck = devLevelCheckParams();
   if (levelCheck) {
     return (

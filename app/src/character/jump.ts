@@ -1,21 +1,18 @@
 /**
- * The app-open Jump (Part 06 §10), and the throttle that keeps it special.
+ * The throttle that keeps the app-open Jump special (Part 06 §10).
  *
- * Squash → launch → settle, played once when the app opens. Throttled to once
- * per hour against a PERSISTED timestamp rather than a session flag: the reason
- * the throttle exists is that a student who bounces in and out of the app all
- * morning would otherwise see the same flourish every time, and a session flag
- * resets on exactly those returns. The persistence itself lives in
+ * The shape of the jump lives in `idle.ts` with the other keyframes; this is
+ * only the throttle.
+ *
+ * Once per hour, against a PERSISTED timestamp rather than a session flag: the
+ * reason the throttle exists is that a student who bounces in and out of the app
+ * all morning would otherwise see the same flourish every time, and a session
+ * flag resets on exactly those returns. The persistence itself lives in
  * `jumpStorage.ts` — this file stays free of React Native imports so it can be
  * unit-tested.
  */
 
 export const JUMP_THROTTLE_MS = 60 * 60 * 1000;
-
-/** Phase durations, in order. Launch overshoots; settle lands with one bounce. */
-export const JUMP_PHASES_MS = { squash: 180, launch: 260, settle: 340 };
-
-export const JUMP_TOTAL_MS = JUMP_PHASES_MS.squash + JUMP_PHASES_MS.launch + JUMP_PHASES_MS.settle;
 
 /** Whether enough time has passed since the last jump. */
 export function canJump(lastJumpAt: number | null, now: number): boolean {

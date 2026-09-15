@@ -1,100 +1,83 @@
-import { JUMP_PHASES_MS, JUMP_TOTAL_MS } from './jump';
-
 /**
- * Float, Breathe and the Jump curve (Part 06 §10) — everything driven purely by
- * elapsed time, so the render layer only has to ask "what does this look like
- * now?" once per frame and hold no animation state of its own.
+ * Float, Breathe and Jump (Part 06 §10) — ported from the reference's CSS
+ * keyframes, kept as data so the values are testable and the component just
+ * renders them.
  *
- * Float and Breathe are deliberately barely-there. They exist to stop the
- * character reading as a static image, and the spec is explicit that Breathe is
- * not a visible squish; the numbers here are small on purpose and should be
- * changed by eye, not by reasoning about them.
+ * Float and Breathe are deliberately barely-there: they exist to stop the
+ * character reading as a static image, and §10 is explicit that Breathe is not
+ * a visible squish.
  */
 
-/** One full up-and-down of the Float bob. */
-export const FLOAT_PERIOD_MS = 3800;
-
-/** Peak vertical travel, in the character's own units. */
-export const FLOAT_AMPLITUDE = 3.2;
-
-/** Breathe rides the same clock as Float, so the body doesn't fight the bob. */
-export const BREATHE_SCALE = 0.014;
-export const BREATHE_SKEW = 0.006;
-
-const TAU = Math.PI * 2;
-
-/** Float offset now — a sine bob, zero at t=0 so it starts from rest. */
-export function floatOffset(elapsedMs: number): number {
-  return Math.sin((elapsedMs / FLOAT_PERIOD_MS) * TAU) * FLOAT_AMPLITUDE;
-}
-
-/**
- * Breathe now: a subtle non-uniform scale plus a touch of skew on `body-path`,
- * approximating a breathing curve without morphing the path.
- *
- * Synced to Float and in anti-phase — the body is widest at the bottom of the
- * bob, which is what makes the two read as one movement rather than two loops
- * running at the same speed.
- */
-export function breathe(elapsedMs: number): { scaleX: number; scaleY: number; skewX: number } {
-  const phase = Math.sin((elapsedMs / FLOAT_PERIOD_MS) * TAU);
-  return {
-    scaleX: 1 - phase * BREATHE_SCALE,
-    scaleY: 1 + phase * BREATHE_SCALE,
-    skewX: phase * BREATHE_SKEW,
-  };
-}
-
-export interface JumpFrame {
-  /** Upward travel, in the character's own units (positive = up). */
-  lift: number;
+export interface Keyframe {
+  /** Percentage through the animation. */
+  at: number;
   scaleX: number;
   scaleY: number;
-  /** False once the jump is over and the character is back at rest. */
-  active: boolean;
-}
-
-const REST: JumpFrame = { lift: 0, scaleX: 1, scaleY: 1, active: false };
-
-function easeOut(t: number): number {
-  return 1 - (1 - t) * (1 - t);
+  /** Positive = downward, matching CSS translateY. */
+  translateY: number;
+  /** Degrees. */
+  skewX?: number;
 }
 
 /**
- * The Jump at a given point in its run: squash → launch → settle (§10).
- *
- * Squash compresses in place; launch overshoots upward while thinning; settle
- * drops back with one small bounce. Returns rest outside the run, so a caller
- * can drive it from a start timestamp and stop when `active` goes false.
+ * Float and Breathe share ONE duration and easing, and must be started
+ * together, so the body's breath stays locked to the bob instead of drifting in
+ * and out of phase over minutes.
  */
-export function jumpFrame(elapsedMs: number): JumpFrame {
-  if (elapsedMs < 0 || elapsedMs >= JUMP_TOTAL_MS) return REST;
+export const IDLE_DURATION_MS = 3000;
+export const IDLE_EASING = 'ease-in-out';
 
-  const { squash, launch } = JUMP_PHASES_MS;
+/** Float: the whole character bobs UP at the half-way point. */
+export const FLOAT_KEYFRAMES: Keyframe[] = [
+  { at: 0, scaleX: 1, scaleY: 1, translateY: 0 },
+  { at: 50, scaleX: 1, scaleY: 1, translateY: -5 },
+  { at: 100, scaleX: 1, scaleY: 1, translateY: 0 },
+];
 
-  if (elapsedMs < squash) {
-    const t = elapsedMs / squash;
-    return { lift: 0, scaleX: 1 + 0.08 * t, scaleY: 1 - 0.12 * t, active: true };
-  }
+/**
+ * Breathe: at the top of the bob the body is WIDER and SHORTER, with a touch
+ * of skew.
+ *
+ * The direction matters and is easy to get backwards — an earlier pass had the
+ * body stretching taller exactly when the float lifted it, which reads as the
+ * character being pulled upward rather than breathing under its own power.
+ */
+export const BREATHE_KEYFRAMES: Keyframe[] = [
+  { at: 0, scaleX: 1, scaleY: 1, translateY: 0, skewX: 0 },
+  { at: 50, scaleX: 1.018, scaleY: 0.982, translateY: 0, skewX: 0.6 },
+  { at: 100, scaleX: 1, scaleY: 1, translateY: 0, skewX: 0 },
+];
 
-  if (elapsedMs < squash + launch) {
-    const t = easeOut((elapsedMs - squash) / launch);
-    return {
-      lift: 26 * t,
-      // Out of the squash (1.08 / 0.88) and through to a stretched launch.
-      scaleX: 1.08 - 0.2 * t,
-      scaleY: 0.88 + 0.26 * t,
-      active: true,
-    };
-  }
+export const JUMP_DURATION_MS = 620;
+export const JUMP_EASING = 'cubic-bezier(.3,.2,.2,1)';
 
-  const t = (elapsedMs - squash - launch) / JUMP_PHASES_MS.settle;
-  // One decaying bounce on the way down, landing exactly at rest.
-  const bounce = Math.sin(t * Math.PI * 2) * (1 - t) * 0.06;
-  return {
-    lift: 26 * (1 - easeOut(t)),
-    scaleX: 0.88 + 0.12 * t - bounce,
-    scaleY: 1.14 - 0.14 * t + bounce,
-    active: true,
-  };
+/**
+ * Jump: squash → launch → settle.
+ *
+ * The squash and the landing both sit BELOW the resting line (positive
+ * translateY): the character compresses into the ground before launching, and
+ * dips again as it absorbs the landing. Clamping the motion to never go below
+ * rest — the obvious-looking "it can't sink through the floor" reading — is
+ * what makes a jump look like a hover.
+ */
+export const JUMP_KEYFRAMES: Keyframe[] = [
+  { at: 0, scaleX: 1, scaleY: 1, translateY: 0 },
+  { at: 18, scaleX: 1.1, scaleY: 0.82, translateY: 4 },
+  { at: 45, scaleX: 0.88, scaleY: 1.22, translateY: -26 },
+  { at: 70, scaleX: 1.05, scaleY: 0.94, translateY: 2 },
+  { at: 85, scaleX: 0.97, scaleY: 1.04, translateY: -4 },
+  { at: 100, scaleX: 1, scaleY: 1, translateY: 0 },
+];
+
+function transformOf(frame: Keyframe): string {
+  const skew = frame.skewX ? ` skewX(${frame.skewX}deg)` : '';
+  return `scale(${frame.scaleX}, ${frame.scaleY}) translateY(${frame.translateY}px)${skew}`;
+}
+
+/** Render a keyframe list as a CSS `@keyframes` block. */
+export function keyframesCss(name: string, frames: Keyframe[]): string {
+  const steps = frames
+    .map((frame) => `  ${frame.at}% { transform: ${transformOf(frame)}; }`)
+    .join('\n');
+  return `@keyframes ${name} {\n${steps}\n}`;
 }

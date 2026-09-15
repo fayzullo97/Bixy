@@ -1,101 +1,129 @@
 import { describe, expect, it } from 'vitest';
-import { blinkTransform, eyeLineFromPath, eyePath, eyePathData, eyePathForGaze } from './eye';
-import { cubicPointAt, parsePath, pathStructure, serializePath, subdividePath } from './path';
-import { GAZE_BOW } from './gaze';
-
-const line = { from: { x: 80, y: 90 }, to: { x: 104, y: 90 } };
+import { BLINK_SCALE_Y, blinkTransform, bowEyePath, eyePathForGaze, subdivideCubicMidpoint } from './eye';
+import { LEFT_EYE_ANCHOR, RIGHT_EYE_ANCHOR, EYE_LEFT_ANGRY, EYE_RIGHT_ANGRY } from './assets';
+import { GAZE_BOW, GAZE_DIRECTIONS } from './gaze';
+import { cubicPointAt, parsePath, pathStructure } from './path';
+import { assertMorphable } from './morph';
 
 describe('gaze-curved eye (Part 06 §10)', () => {
-  it('reproduces the straight source art EXACTLY at front gaze', () => {
-    // Not "close to straight" — the asset was redrawn straight specifically so
-    // a bow of 0 is the art itself.
-    const straight = subdividePath(parsePath('M80 90 L104 90'));
-    expect(eyePathData(line, 0)).toBe(serializePath(straight));
-  });
-
-  it('curves to one side or the other by the sign of the bow', () => {
-    const left = eyePath(line, -3.5);
-    const right = eyePath(line, 3.5);
-    const midLeft = left[1]!.values[5]!;
-    const midRight = right[1]!.values[5]!;
-    expect(midLeft).toBeLessThan(90);
-    expect(midRight).toBeGreaterThan(90);
-    // Symmetric by construction — the old translation-only approach was not.
-    expect(90 - midLeft).toBeCloseTo(midRight - 90, 9);
-  });
-
-  it('keeps the eye endpoints pinned wherever it bows', () => {
-    for (const bow of [-3.5, 0, 2.5, 3.5]) {
-      const path = eyePath(line, bow);
-      expect(path[0]!.values).toEqual([80, 90]);
-      expect(path[2]!.values.slice(4)).toEqual([104, 90]);
+  it('is dead straight at front — the source art, not an approximation', () => {
+    const d = bowEyePath(LEFT_EYE_ANCHOR, 0);
+    // Every x is the anchor's x: no bow at all.
+    for (const value of d.match(/-?[\d.]+/g)!.map(Number).filter((_, i) => i % 2 === 0)) {
+      expect(value).toBe(LEFT_EYE_ANCHOR.x);
     }
   });
 
-  it('stays two segments at every gaze direction, so it can still morph', () => {
-    // Angry-Morph needs this structure whatever the last glance left behind.
-    for (const direction of ['front', 'left', 'right', 'top_left', 'top_right'] as const) {
-      expect(pathStructure(eyePathForGaze(line, direction))).toBe('MCC');
-    }
-  });
-
-  it('bows across the eye even when the eye is angled', () => {
-    const angled = { from: { x: 0, y: 0 }, to: { x: 0, y: 24 } };
-    const path = eyePath(angled, 4);
-    // A vertical eye bows horizontally — the offset is perpendicular, not
-    // always vertical.
-    expect(path[1]!.values[4]).toBeCloseTo(-4 * 0.75, 5);
-  });
-
-  it('matches the gaze table', () => {
-    expect(serializePath(eyePathForGaze(line, 'left'))).toBe(serializePath(eyePath(line, GAZE_BOW.left)));
-  });
-
-  it('survives a degenerate zero-length eye instead of producing NaN', () => {
-    const point = { from: { x: 10, y: 10 }, to: { x: 10, y: 10 } };
-    const data = eyePathData(point, 3);
-    expect(data).not.toContain('NaN');
-  });
-
-  it('traces the same curve the single cubic would, after subdivision', () => {
-    const bowed = eyePath(line, 3.5);
-    const midpoint = cubicPointAt(
-      { x: 80, y: 90 },
-      { x: 88, y: 93.5 },
-      { x: 96, y: 93.5 },
-      { x: 104, y: 90 },
-      0.5,
+  it('keeps the asset’s own control heights, which are NOT evenly spaced', () => {
+    // The right eye's lower control sits at 82 where the left's sits at 74.
+    // Even thirds would flatten that and start the morph from geometry the
+    // artist never drew.
+    expect(RIGHT_EYE_ANCHOR.cy2).toBe(82);
+    expect(LEFT_EYE_ANCHOR.cy2).toBe(74);
+    expect(RIGHT_EYE_ANCHOR.cy2 - RIGHT_EYE_ANCHOR.y0).not.toBeCloseTo(
+      ((RIGHT_EYE_ANCHOR.y1 - RIGHT_EYE_ANCHOR.y0) * 2) / 3,
+      1,
     );
-    expect(bowed[1]!.values[4]).toBeCloseTo(midpoint.x, 9);
-    expect(bowed[1]!.values[5]).toBeCloseTo(midpoint.y, 9);
+  });
+
+  it('bows left or right by the sign, with equal strength', () => {
+    const left = bowEyePath(LEFT_EYE_ANCHOR, -7);
+    const right = bowEyePath(LEFT_EYE_ANCHOR, 7);
+    const xs = (d: string) => d.match(/-?[\d.]+/g)!.map(Number).filter((_, i) => i % 2 === 0);
+    const leftMax = Math.max(...xs(left).map((x) => LEFT_EYE_ANCHOR.x - x));
+    const rightMax = Math.max(...xs(right).map((x) => x - LEFT_EYE_ANCHOR.x));
+    // Symmetric by construction — the old translation-only approach was not.
+    expect(leftMax).toBeCloseTo(rightMax, 9);
+    expect(leftMax).toBeGreaterThan(0);
+  });
+
+  it('pins the eye endpoints wherever it bows', () => {
+    for (const bow of Object.values(GAZE_BOW)) {
+      const d = bowEyePath(LEFT_EYE_ANCHOR, bow);
+      expect(d.startsWith(`M${LEFT_EYE_ANCHOR.x} ${LEFT_EYE_ANCHOR.y0}`)).toBe(true);
+      expect(d.endsWith(`${LEFT_EYE_ANCHOR.x} ${LEFT_EYE_ANCHOR.y1}`)).toBe(true);
+    }
+  });
+
+  it('is two segments at every direction, so it can still morph', () => {
+    for (const direction of GAZE_DIRECTIONS) {
+      expect(pathStructure(parsePath(eyePathForGaze(LEFT_EYE_ANCHOR, direction)))).toBe('MCC');
+    }
+  });
+
+  it('stays morph-compatible with the ANGRY eyes at every gaze direction', () => {
+    // The whole point of subdividing: Bixy can be angry and mid-glance at once.
+    for (const direction of GAZE_DIRECTIONS) {
+      expect(() =>
+        assertMorphable(eyePathForGaze(LEFT_EYE_ANCHOR, direction), EYE_LEFT_ANGRY, 'eye-left'),
+      ).not.toThrow();
+      expect(() =>
+        assertMorphable(eyePathForGaze(RIGHT_EYE_ANCHOR, direction), EYE_RIGHT_ANGRY, 'eye-right'),
+      ).not.toThrow();
+    }
   });
 });
 
-describe('reading an eye out of its asset (Part 06 §10)', () => {
-  it('recovers the endpoints of a straight eye', () => {
-    expect(eyeLineFromPath('M80 90 L104 90')).toEqual(line);
+describe('Bézier subdivision (Part 06 §10)', () => {
+  const p0: [number, number] = [96, 58];
+  const p1: [number, number] = [89, 63.5];
+  const p2: [number, number] = [89, 74];
+  const p3: [number, number] = [96, 85];
+
+  it('splits a curve into two that trace it exactly', () => {
+    const [a0, a1, a2, a3, b1, b2, b3] = subdivideCubicMidpoint(p0, p1, p2, p3);
+    expect(a0).toEqual(p0);
+    expect(b3).toEqual(p3);
+
+    const point = (t: number) =>
+      cubicPointAt({ x: p0[0], y: p0[1] }, { x: p1[0], y: p1[1] }, { x: p2[0], y: p2[1] }, { x: p3[0], y: p3[1] }, t);
+
+    // The join is the original curve's midpoint.
+    expect(a3[0]).toBeCloseTo(point(0.5).x, 9);
+    expect(a3[1]).toBeCloseTo(point(0.5).y, 9);
+
+    // And each half traces its share of the original.
+    for (const t of [0.25, 0.5, 0.75]) {
+      const onFirst = cubicPointAt(
+        { x: a0[0], y: a0[1] }, { x: a1[0], y: a1[1] }, { x: a2[0], y: a2[1] }, { x: a3[0], y: a3[1] }, t,
+      );
+      expect(onFirst.x).toBeCloseTo(point(t / 2).x, 9);
+      expect(onFirst.y).toBeCloseTo(point(t / 2).y, 9);
+
+      const onSecond = cubicPointAt(
+        { x: a3[0], y: a3[1] }, { x: b1[0], y: b1[1] }, { x: b2[0], y: b2[1] }, { x: b3[0], y: b3[1] }, t,
+      );
+      expect(onSecond.x).toBeCloseTo(point(0.5 + t / 2).x, 9);
+      expect(onSecond.y).toBeCloseTo(point(0.5 + t / 2).y, 9);
+    }
   });
 
-  it('recovers them from a curved eye too', () => {
-    expect(eyeLineFromPath('M80 90 C88 94 96 94 104 90')).toEqual(line);
-  });
-
-  it('refuses a path it cannot read as an eye', () => {
-    expect(() => eyeLineFromPath('M80 90')).toThrow(/moves then draws/);
+  it('subdivides a dead-straight eye without bending it', () => {
+    const straight = bowEyePath(LEFT_EYE_ANCHOR, 0);
+    const commands = parsePath(straight);
+    expect(pathStructure(commands)).toBe('MCC');
+    for (const command of commands.slice(1)) {
+      for (let i = 0; i < command.values.length; i += 2) {
+        expect(command.values[i]).toBe(LEFT_EYE_ANCHOR.x);
+      }
+    }
   });
 });
 
 describe('blink (Part 06 §10)', () => {
   it('does nothing at rest', () => {
-    expect(blinkTransform(line, 0)).toContain('scale(1 1)');
+    expect(blinkTransform(LEFT_EYE_ANCHOR, false)).toContain('scale(1 1)');
   });
 
   it('squashes around the eye’s OWN center, not the face’s', () => {
     // Otherwise both eyes slide toward the middle of the face as they close.
-    expect(blinkTransform(line, 1)).toContain('translate(0 90)');
+    const center = (LEFT_EYE_ANCHOR.y0 + LEFT_EYE_ANCHOR.y1) / 2;
+    expect(blinkTransform(LEFT_EYE_ANCHOR, true)).toContain(`translate(0 ${center})`);
+    expect(blinkTransform(RIGHT_EYE_ANCHOR, true)).not.toContain(`translate(0 ${center})`);
   });
 
-  it('never scales to exactly zero, which would erase the stroke', () => {
-    expect(blinkTransform(line, 1)).not.toContain('scale(1 0)');
+  it('closes to the reference’s 0.08, never to zero, which would erase the stroke', () => {
+    expect(BLINK_SCALE_Y).toBe(0.08);
+    expect(blinkTransform(LEFT_EYE_ANCHOR, true)).toContain('scale(1 0.08)');
   });
 });

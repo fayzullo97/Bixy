@@ -3,7 +3,6 @@ import {
   CALM_TO_ANGRY_OFFSET,
   cubicPointAt,
   interpolatePath,
-  lerpColor,
   morphCompatible,
   parsePath,
   pathStructure,
@@ -142,22 +141,5 @@ describe('canvas alignment (Part 06 §10)', () => {
 
   it('leaves a close command alone', () => {
     expect(serializePath(translatePath(parsePath('M0 0 L4 0 Z'), 2, 1))).toBe('M2 1 L6 1 Z');
-  });
-});
-
-describe('color blending (Part 06 §10)', () => {
-  it('moves the fill purple→red in step with anger', () => {
-    expect(lerpColor('#000000', '#ffffff', 0)).toBe('#000000');
-    expect(lerpColor('#000000', '#ffffff', 1)).toBe('#ffffff');
-    expect(lerpColor('#000000', '#ffffff', 0.5)).toBe('#808080');
-  });
-
-  it('accepts shorthand hex and clamps out-of-range values', () => {
-    expect(lerpColor('#f00', '#00f', 0)).toBe('#ff0000');
-    expect(lerpColor('#f00', '#00f', 5)).toBe('#0000ff');
-  });
-
-  it('rejects a color it cannot read', () => {
-    expect(() => lerpColor('purple', '#ff0000', 0.5)).toThrow(/hex/);
   });
 });

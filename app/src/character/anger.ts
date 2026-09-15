@@ -53,6 +53,25 @@ export function strike(state: AngerState, now: number): AngerState {
   return { level: clamp01(angerAt(state, now) + ANGER_PER_STRIKE), triggeredAt: now };
 }
 
+/**
+ * Parse a persisted state; anything unreadable is treated as calm.
+ *
+ * Persisting the {level, triggeredAt} PAIR rather than a level is what lets the
+ * three-hour decay keep running across restarts — a stored level alone would
+ * freeze while the app is closed and resume hours later at its old value.
+ */
+export function readAngerState(raw: string | null): AngerState | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<AngerState>;
+    if (typeof parsed?.level !== 'number' || typeof parsed?.triggeredAt !== 'number') return null;
+    if (!Number.isFinite(parsed.level) || !Number.isFinite(parsed.triggeredAt)) return null;
+    return { level: clamp01(parsed.level), triggeredAt: parsed.triggeredAt };
+  } catch {
+    return null;
+  }
+}
+
 /** Anger ends the moment the student passes — the struggle it reacts to is over. */
 export function clearAnger(): AngerState {
   return CALM;

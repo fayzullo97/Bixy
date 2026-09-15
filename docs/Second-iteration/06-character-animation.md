@@ -1,9 +1,10 @@
 # Bixy PRD — Part 6: Bixy Character Animation
 
 > Covers original PRD §10. Read `00-context-shipped-v1.md` first. Reuses the
-> react-native-svg + Reanimated approach from Part 03 (board & doodles), and
-> the Angry-Morph trigger reuses the tone-shift signal from Part 05 §8.
-> Referenced by Part 07 (used in the home-screen hero scene).
+> plain-DOM + CSS keyframes approach from Part 03 (board & doodles) — see
+> stack correction below. The Angry-Morph trigger reuses the tone-shift
+> signal from Part 05 §8. Referenced by Part 07 (used in the home-screen
+> hero scene).
 
 ---
 
@@ -34,11 +35,32 @@ re-describing):**
 | **Jump** | App-open squash → launch → settle, throttled to 1/hour |
 | **Angry-Morph** | Anger-driven body/eye/mouth shape + color transform |
 
-**Technical approach:** builds on the same react-native-svg + Reanimated
-stack already used for the lesson-board doodle animations (Part 03), rather
-than introducing Lottie/Rive or a new animation library. Built as a
+**Technical approach — corrected (v14.23):** this section originally said
+it builds on react-native-svg + Reanimated. **That was wrong** — neither is
+installed in the codebase, confirmed via trace. The lesson-board doodle
+animations this was meant to reuse the approach of (`DoodleSvg.tsx`) are
+actually plain DOM manipulation, web-only, by that file's own comment —
+not react-native-svg. Building Bixy's animation on a different, unused
+stack would split the codebase into two different techniques for the same
+category of problem; this now follows the same plain-DOM + CSS keyframes
+approach `DoodleSvg` already uses. This extends the same web-only debt
+`DoodleSvg` already carries (a rewrite is owed once native development
+starts, per Part 00's "native app is a separate later initiative") — not a
+new problem, just staying consistent with one already accepted. Built as a
 self-contained component so it can be reused in both the home-screen hero
 scene (Part 07) and the lesson board.
+
+**Standing rule for this section:** a browser-verified, working reference
+implementation exists (`bixy-animation-preview-v2.html`) covering every
+animation below with real, tuned values — timing, amounts, easing, all of
+it. That file is the canonical source for exact constants, not the prose
+descriptions here. This isn't a formality: an initial implementation pass
+built directly from this written spec (before the reference was available)
+produced nine real divergences from the verified behavior, several
+outright wrong rather than just differently-tuned (an inverted breathe
+phase, a committed test asserting the opposite of the verified jump
+behavior). Port values from the reference; don't re-derive or approximate
+them from the descriptions below.
 
 **Constant animations (always running, with one standing exception):**
 - **Standing rule: look-around pauses whenever Bixy is actively speaking or
@@ -105,10 +127,11 @@ scene (Part 07) and the lesson board.
     interpolate the same way — the calm eye curve was split into two
     segments via exact Bézier subdivision (same visual shape, one added
     point) specifically so its structure matches the angry eye's two-segment
-    shape and both can morph point-by-point too. Body fill and the sparkle
-    accent's fill both interpolate color (purple→red) in step with the same
-    anger value. Nothing is ever stacked or opacity-crossfaded — one set of
-    paths, transforming.
+    shape and both can morph point-by-point too. **Sparkle never morphs
+    shape** — only its fill color interpolates (the angry asset's sparkle
+    path is unused entirely); body fill interpolates purple→pink-red
+    (`#7950F4`→`#F45084`, not a generic "red"). Nothing is ever stacked or
+    opacity-crossfaded — one set of paths, transforming.
   - Look-Around stays off per the standing rule above (Bixy is effectively
     always "addressing" the student while angry), Blink keeps
     running
@@ -130,3 +153,16 @@ own fixed, generously-sized **absolute** regions (`userSpaceOnUse`) instead
 of regions computed from the path's own bounding box — since that box can
 legitimately approach zero width for this character's eye shapes, don't
 rely on percentage-based filter regions for them.
+
+**Interpolation implementation, confirmed (v14.23):** two techniques, kept
+deliberately separate for what each is actually good at, not redundant
+with each other. Runtime path interpolation uses the reference's
+string-template approach (preserves the source SVGs' original command
+letters verbatim, correctly handles the body path's exponent-notation
+coordinate rather than re-serializing parsed numbers) — this is the
+browser-verified path and is what actually ships. A separate,
+parse-based structural-compatibility assertion (confirming calm/angry
+command and point counts genuinely match before trusting any interpolation
+between them) is kept alongside it, since the reference implementation has
+no equivalent check — this guards against a future asset update silently
+breaking point-count parity between calm and angry.

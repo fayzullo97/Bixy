@@ -292,29 +292,3 @@ export function translatePath(commands: Command[], dx: number, dy: number): Comm
 
 /** The offset that puts calm-canvas coordinates onto the angry canvas (§10). */
 export const CALM_TO_ANGRY_OFFSET = { dx: 2, dy: 1 };
-
-function hexToRgb(hex: string): [number, number, number] {
-  const clean = hex.replace('#', '');
-  const full =
-    clean.length === 3
-      ? clean.split('').map((c) => c + c).join('')
-      : clean;
-  // Length alone isn't enough — "purple" is six characters and would parse as NaN.
-  if (!/^[0-9a-fA-F]{6}$/.test(full)) {
-    throw new Error(`lerpColor: expected a hex color, got "${hex}"`);
-  }
-  return [
-    parseInt(full.slice(0, 2), 16),
-    parseInt(full.slice(2, 4), 16),
-    parseInt(full.slice(4, 6), 16),
-  ];
-}
-
-/** Blend two hex colors — the body and sparkle fills move purple→red with anger. */
-export function lerpColor(from: string, to: string, t: number): string {
-  const clamped = Math.max(0, Math.min(1, t));
-  const a = hexToRgb(from);
-  const b = hexToRgb(to);
-  const channel = (i: number) => Math.round(lerp(a[i]!, b[i]!, clamped)).toString(16).padStart(2, '0');
-  return `#${channel(0)}${channel(1)}${channel(2)}`;
-}

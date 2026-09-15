@@ -6,6 +6,7 @@ import {
   angerAt,
   angerFromStreak,
   clearAnger,
+  readAngerState,
   strike,
 } from './anger';
 
@@ -60,6 +61,22 @@ describe('anger level (Part 06 §10)', () => {
 
   it('clears outright on a pass', () => {
     expect(angerAt(clearAnger(), T0)).toBe(0);
+  });
+
+  it('persists the level AND its trigger time, so decay survives a restart', () => {
+    // Storing a bare level would freeze it while the app is closed and resume
+    // hours later at the old value.
+    const state = strike(strike(CALM, T0), T0);
+    const restored = readAngerState(JSON.stringify(state))!;
+    expect(restored).toEqual(state);
+    expect(angerAt(restored, T0 + ANGER_DECAY_MS / 2)).toBeCloseTo(0.5, 5);
+  });
+
+  it('treats unreadable stored anger as calm rather than guessing', () => {
+    expect(readAngerState(null)).toBeNull();
+    expect(readAngerState('not json')).toBeNull();
+    expect(readAngerState('{"level":1}')).toBeNull();
+    expect(readAngerState('{"level":"lots","triggeredAt":1}')).toBeNull();
   });
 
   it('restores the level from the server-side streak on arrival', () => {

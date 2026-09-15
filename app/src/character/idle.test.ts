@@ -1,77 +1,117 @@
 import { describe, expect, it } from 'vitest';
-import { FLOAT_AMPLITUDE, FLOAT_PERIOD_MS, breathe, floatOffset, jumpFrame } from './idle';
-import { JUMP_PHASES_MS, JUMP_TOTAL_MS } from './jump';
+import {
+  BREATHE_KEYFRAMES,
+  FLOAT_KEYFRAMES,
+  IDLE_DURATION_MS,
+  JUMP_DURATION_MS,
+  JUMP_KEYFRAMES,
+  keyframesCss,
+} from './idle';
+
+const at = (frames: typeof FLOAT_KEYFRAMES, percent: number) => frames.find((f) => f.at === percent)!;
 
 describe('float (Part 06 §10)', () => {
-  it('starts from rest, so the character does not pop on mount', () => {
-    expect(floatOffset(0)).toBe(0);
+  it('starts and ends at rest, lifting at the half-way point', () => {
+    expect(at(FLOAT_KEYFRAMES, 0).translateY).toBe(0);
+    expect(at(FLOAT_KEYFRAMES, 50).translateY).toBe(-5);
+    expect(at(FLOAT_KEYFRAMES, 100).translateY).toBe(0);
   });
 
-  it('bobs up and back down over one period', () => {
-    expect(floatOffset(FLOAT_PERIOD_MS / 4)).toBeCloseTo(FLOAT_AMPLITUDE, 5);
-    expect(floatOffset(FLOAT_PERIOD_MS / 2)).toBeCloseTo(0, 5);
-    expect(floatOffset((FLOAT_PERIOD_MS * 3) / 4)).toBeCloseTo(-FLOAT_AMPLITUDE, 5);
-    expect(floatOffset(FLOAT_PERIOD_MS)).toBeCloseTo(0, 5);
-  });
-
-  it('stays within its amplitude', () => {
-    for (let t = 0; t < FLOAT_PERIOD_MS * 3; t += 37) {
-      expect(Math.abs(floatOffset(t))).toBeLessThanOrEqual(FLOAT_AMPLITUDE + 1e-9);
+  it('only translates — the bob never resizes the character', () => {
+    for (const frame of FLOAT_KEYFRAMES) {
+      expect(frame.scaleX).toBe(1);
+      expect(frame.scaleY).toBe(1);
     }
   });
 });
 
 describe('breathe (Part 06 §10)', () => {
+  it('is phase-locked to float — one duration, both peaking at 50%', () => {
+    expect(BREATHE_KEYFRAMES.map((f) => f.at)).toEqual(FLOAT_KEYFRAMES.map((f) => f.at));
+    expect(IDLE_DURATION_MS).toBe(3000);
+  });
+
+  it('is WIDER and SHORTER at the top of the bob, not taller', () => {
+    // The inverted version reads as the character being pulled upward rather
+    // than breathing under its own power.
+    const peak = at(BREATHE_KEYFRAMES, 50);
+    expect(peak.scaleX).toBeGreaterThan(1);
+    expect(peak.scaleY).toBeLessThan(1);
+    expect(peak.scaleX).toBe(1.018);
+    expect(peak.scaleY).toBe(0.982);
+  });
+
   it('is barely-there, never a visible squish', () => {
-    for (let t = 0; t < FLOAT_PERIOD_MS; t += 53) {
-      const { scaleX, scaleY } = breathe(t);
-      expect(Math.abs(scaleX - 1)).toBeLessThan(0.02);
-      expect(Math.abs(scaleY - 1)).toBeLessThan(0.02);
+    for (const frame of BREATHE_KEYFRAMES) {
+      expect(Math.abs(frame.scaleX - 1)).toBeLessThanOrEqual(0.02);
+      expect(Math.abs(frame.scaleY - 1)).toBeLessThanOrEqual(0.02);
+      expect(Math.abs(frame.skewX ?? 0)).toBeLessThanOrEqual(1);
     }
   });
 
-  it('preserves volume — widening as it shortens', () => {
-    const { scaleX, scaleY } = breathe(FLOAT_PERIOD_MS / 4);
-    expect(scaleX).toBeLessThan(1);
-    expect(scaleY).toBeGreaterThan(1);
-  });
-
-  it('rides the same clock as float, so the two read as one movement', () => {
-    expect(breathe(0).scaleX).toBe(1);
-    expect(breathe(FLOAT_PERIOD_MS / 2).scaleX).toBeCloseTo(1, 9);
+  it('returns to exactly neutral at both ends', () => {
+    for (const percent of [0, 100]) {
+      const frame = at(BREATHE_KEYFRAMES, percent);
+      expect(frame.scaleX).toBe(1);
+      expect(frame.scaleY).toBe(1);
+      expect(frame.skewX).toBe(0);
+    }
   });
 });
 
 describe('jump (Part 06 §10)', () => {
-  it('is at rest before and after the run', () => {
-    expect(jumpFrame(-1).active).toBe(false);
-    expect(jumpFrame(JUMP_TOTAL_MS)).toMatchObject({ lift: 0, scaleX: 1, scaleY: 1, active: false });
+  it('runs for the reference’s 620ms', () => {
+    expect(JUMP_DURATION_MS).toBe(620);
   });
 
-  it('squashes first — shorter and wider, still on the ground', () => {
-    const frame = jumpFrame(JUMP_PHASES_MS.squash - 1);
-    expect(frame.lift).toBe(0);
-    expect(frame.scaleY).toBeLessThan(1);
-    expect(frame.scaleX).toBeGreaterThan(1);
+  it('DIPS below rest on the squash, before launching', () => {
+    // Positive translateY is downward. The character compresses into the
+    // ground first — clamping this to never sink is what turns a jump into a
+    // hover, and an earlier test pinned exactly that wrong behaviour.
+    const squash = at(JUMP_KEYFRAMES, 18);
+    expect(squash.translateY).toBeGreaterThan(0);
+    expect(squash.scaleY).toBeLessThan(1);
+    expect(squash.scaleX).toBeGreaterThan(1);
   });
 
-  it('launches upward, taller and thinner than normal', () => {
-    const frame = jumpFrame(JUMP_PHASES_MS.squash + JUMP_PHASES_MS.launch - 1);
-    expect(frame.lift).toBeGreaterThan(20);
-    expect(frame.scaleY).toBeGreaterThan(1);
-    expect(frame.scaleX).toBeLessThan(1);
+  it('launches high, taller and thinner', () => {
+    const launch = at(JUMP_KEYFRAMES, 45);
+    expect(launch.translateY).toBe(-26);
+    expect(launch.scaleY).toBeGreaterThan(1);
+    expect(launch.scaleX).toBeLessThan(1);
   });
 
-  it('settles back to exactly rest, leaving nothing offset behind', () => {
-    const last = jumpFrame(JUMP_TOTAL_MS - 0.001);
-    expect(last.lift).toBeCloseTo(0, 3);
-    expect(last.scaleX).toBeCloseTo(1, 2);
-    expect(last.scaleY).toBeCloseTo(1, 2);
+  it('DIPS again on landing, then bounces once before settling', () => {
+    const land = at(JUMP_KEYFRAMES, 70);
+    const bounce = at(JUMP_KEYFRAMES, 85);
+    expect(land.translateY).toBeGreaterThan(0); // absorbs the landing
+    expect(land.scaleY).toBeLessThan(1);
+    expect(bounce.translateY).toBeLessThan(0); // one small rebound
+    expect(bounce.scaleY).toBeGreaterThan(1);
   });
 
-  it('never leaves the ground during the squash, and never sinks below it', () => {
-    for (let t = 0; t < JUMP_TOTAL_MS; t += 5) {
-      expect(jumpFrame(t).lift).toBeGreaterThanOrEqual(0);
-    }
+  it('settles to exactly rest, leaving nothing offset behind', () => {
+    const end = at(JUMP_KEYFRAMES, 100);
+    expect(end).toMatchObject({ scaleX: 1, scaleY: 1, translateY: 0 });
+  });
+
+  it('crosses the resting line in both directions — it is not a one-way hop', () => {
+    const ys = JUMP_KEYFRAMES.map((f) => f.translateY);
+    expect(Math.max(...ys)).toBeGreaterThan(0);
+    expect(Math.min(...ys)).toBeLessThan(0);
+  });
+});
+
+describe('keyframe rendering', () => {
+  it('emits a CSS block the component can inject', () => {
+    const css = keyframesCss('bixy-float', FLOAT_KEYFRAMES);
+    expect(css).toContain('@keyframes bixy-float');
+    expect(css).toContain('50% { transform: scale(1, 1) translateY(-5px); }');
+  });
+
+  it('includes skew only where there is any', () => {
+    const css = keyframesCss('bixy-breathe', BREATHE_KEYFRAMES);
+    expect(css).toContain('skewX(0.6deg)');
+    expect(css).toContain('0% { transform: scale(1, 1) translateY(0px); }');
   });
 });
