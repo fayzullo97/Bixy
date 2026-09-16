@@ -40,25 +40,84 @@ declare global {
   }
 }
 
+/**
+ * The in-flight (or settled) load, shared by every caller.
+ *
+ * This is the whole fix for a deadlock the previous version had: it re-attached
+ * `load`/`error` listeners to an existing `<script>`, but those events fire
+ * exactly once. A second caller arriving after the script had already settled
+ * attached listeners to events that would never fire again, and its promise
+ * never resolved OR rejected — so `getTelegramInitData` never returned, auth's
+ * `bootstrap()` never set a status, and the app sat on its loading spinner
+ * forever with no error state and no retry.
+ *
+ * That was unreachable while auth was the only caller. Part 08 §15 added a
+ * second concurrent one (`useTelegramFullscreen`), which is exactly the race:
+ * whichever consumer arrives second is the one that hangs.
+ *
+ * Caching the promise settles every caller with the same result regardless of
+ * when they arrive — a resolved promise is still resolved for a caller that
+ * awaits it minutes later, which listeners can't be.
+ */
+let sdkLoad: Promise<void> | null = null;
+
+/** Records how an injected tag settled, so state survives past the one-shot events. */
+const STATE_ATTR = 'data-sdk-state';
+
 function loadSdk(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.Telegram?.WebApp) {
-      resolve();
-      return;
-    }
+  // Already usable — whoever loaded it, there is nothing to wait for.
+  if (window.Telegram?.WebApp) return Promise.resolve();
+  if (sdkLoad) return sdkLoad;
+
+  sdkLoad = new Promise<void>((resolve, reject) => {
+    const fail = () => reject(new Error('Telegram SDK failed to load'));
     const existing = document.querySelector<HTMLScriptElement>(`script[src="${SDK_SRC}"]`);
+
     if (existing) {
-      existing.addEventListener('load', () => resolve());
-      existing.addEventListener('error', () => reject(new Error('Telegram SDK failed to load')));
-      return;
+      // A tag from a previous attempt. Its events may already be spent, so trust
+      // the recorded state over listeners — that read is what breaks the deadlock.
+      const state = existing.getAttribute(STATE_ATTR);
+      if (state === 'loaded') {
+        resolve();
+        return;
+      }
+      if (state === 'error') {
+        // Drop the dead tag and fall through to injecting a fresh one. Resolving
+        // the retry against the old failure would make the retry button a no-op:
+        // it would report the previous network failure without re-attempting.
+        existing.remove();
+      } else {
+        // Still in flight: its listeners haven't fired yet, so attaching is safe.
+        existing.addEventListener('load', () => resolve());
+        existing.addEventListener('error', fail);
+        return;
+      }
     }
+
     const script = document.createElement('script');
     script.src = SDK_SRC;
     script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Telegram SDK failed to load'));
+    script.setAttribute(STATE_ATTR, 'loading');
+    script.addEventListener('load', () => {
+      script.setAttribute(STATE_ATTR, 'loaded');
+      resolve();
+    });
+    script.addEventListener('error', () => {
+      script.setAttribute(STATE_ATTR, 'error');
+      fail();
+    });
     document.head.appendChild(script);
   });
+
+  // A failed load must not poison the page for good: the "open in Telegram"
+  // screen offers a retry, and that retry re-runs `bootstrap()`. Dropping the
+  // cached rejection lets the next attempt genuinely re-try instead of being
+  // handed the old failure.
+  sdkLoad.catch(() => {
+    sdkLoad = null;
+  });
+
+  return sdkLoad;
 }
 
 /**
