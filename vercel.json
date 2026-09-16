@@ -11,7 +11,7 @@
   ],
   "routes": [
     {
-      "src": "/(health|auth|me|progress|content|lessons|assessment|level-check|study-plan)(/.*)?",
+      "src": "/(health|auth|me|progress|content|lessons|assessment|level-check|study-plan|levels)(/.*)?",
       "dest": "/server/src/index.ts"
     },
     { "src": "/_expo/(.*)", "dest": "/app/_expo/$1" },
