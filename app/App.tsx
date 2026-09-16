@@ -7,6 +7,7 @@ import { SignedInApp } from './src/screens/SignedInApp';
 import { DevBoardScreen } from './src/screens/DevBoardScreen';
 import { DevLevelCheckScreen } from './src/screens/DevLevelCheckScreen';
 import { DevBixyScreen } from './src/screens/DevBixyScreen';
+import { DevHomeScreen, type DevHomeScreenName } from './src/screens/DevHomeScreen';
 import { BoardHost } from './src/board/BoardHost';
 import type { Lang } from './src/i18n';
 import { devRoutesEnabled } from './src/dev/enabled';
@@ -75,6 +76,18 @@ function DevTapToStart({ children }: { children: ReactNode }) {
 // DEV-ONLY: `?dev=bixy` renders the character (Part 06 §10) with the reference
 // preview's controls, for comparing the port against it. `anger=0..100` sets the
 // initial morph amount so a screenshot can be taken at a fixed value.
+// DEV-ONLY: `?dev=home` renders Part 07's screens over fixed data. `screen=flow`
+// walks §12's onboarding order; `screen=home|alllevels|level|greeting|language|reveal`
+// opens one screen directly for a screenshot.
+function devHomeParams(): { screen: DevHomeScreenName } | null {
+  if (!devRoutesEnabled() || typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('dev') !== 'home') return null;
+  const screen = params.get('screen');
+  const known: DevHomeScreenName[] = ['home', 'alllevels', 'level', 'greeting', 'language', 'reveal', 'flow'];
+  return { screen: known.includes(screen as DevHomeScreenName) ? (screen as DevHomeScreenName) : 'home' };
+}
+
 function devBixyParams(): { anger: number } | null {
   if (!devRoutesEnabled() || typeof window === 'undefined') return null;
   const params = new URLSearchParams(window.location.search);
@@ -99,6 +112,15 @@ function Root() {
 }
 
 export default function App() {
+  const home = devHomeParams();
+  if (home) {
+    return (
+      <View style={styles.devHomeRoot}>
+        <StatusBar style="dark" />
+        <DevHomeScreen screen={home.screen} />
+      </View>
+    );
+  }
   const bixy = devBixyParams();
   if (bixy) {
     return (
@@ -152,6 +174,7 @@ export default function App() {
 const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#12151c' },
   devRoot: { flex: 1, backgroundColor: '#12151c' },
+  devHomeRoot: { flex: 1, backgroundColor: '#ffffff' },
   tapGate: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#12151c', padding: 28, gap: 14 },
   tapButton: { backgroundColor: '#5aa9ff', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32 },
   tapButtonText: { color: '#0b0e14', fontSize: 18, fontWeight: '600' },

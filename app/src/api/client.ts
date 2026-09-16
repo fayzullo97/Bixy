@@ -56,6 +56,40 @@ export interface StudyPlan {
   stats: LevelStats;
 }
 
+/** A topic's state on the level map (Part 07 §9). Only `passed`, `current` and
+ *  `started` are openable — `locked` sits past the path's frontier. */
+export type TopicStatus = 'passed' | 'started' | 'current' | 'locked';
+
+/** A tier's state in the All Levels grid (Part 07 §9). */
+export type LevelStatus = 'completed' | 'in_progress' | 'not_started';
+
+export interface LevelSummary {
+  level: string;
+  status: LevelStatus;
+  completed: number;
+  total: number;
+}
+
+/** The All Levels grid (Part 07 §9). */
+export interface LevelMap {
+  levels: LevelSummary[];
+  placement: string | null;
+}
+
+export interface LevelTopic {
+  topic_id: string;
+  status: TopicStatus;
+  key_idea: string | null;
+}
+
+/** One level's screen (Part 07 §9); `scroll_to` is non-null only for the
+ *  student's own current level. */
+export interface LevelDetail {
+  level: string;
+  topics: LevelTopic[];
+  scroll_to: number | null;
+}
+
 /** The arrival stage (§8.12, Part 05 §7). `first_meeting` fires once, ever. */
 export type GreetingVariant = 'full' | 'short' | 'first_meeting';
 
@@ -353,6 +387,39 @@ export const api = {
       // Best-effort. A lost answer set is a smaller harm than blocking a student
       // at the door of their first lesson.
     });
+  },
+
+  /**
+   * Set the student's UI language (Part 07 §12). Asked after the level check,
+   * so this is a separate call rather than part of sign-in. Returns the updated
+   * user so the client doesn't have to guess what the server stored.
+   */
+  async setLanguage(session: string, language: Lang): Promise<UserDto> {
+    const res = await fetch(`${API_URL}/me/language`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
+      body: JSON.stringify({ language }),
+    });
+    if (!res.ok) throw new Error(`language failed: ${res.status}`);
+    return ((await res.json()) as { user: UserDto }).user;
+  },
+
+  /** Every tier with its counts, for the All Levels grid (Part 07 §9). */
+  async getLevels(session: string): Promise<LevelMap> {
+    const res = await fetch(`${API_URL}/levels`, {
+      headers: { Authorization: `Bearer ${session}` },
+    });
+    if (!res.ok) throw new Error(`levels failed: ${res.status}`);
+    return res.json() as Promise<LevelMap>;
+  },
+
+  /** One tier's topics in path order, plus where its screen opens (Part 07 §9). */
+  async getLevel(session: string, level: string): Promise<LevelDetail> {
+    const res = await fetch(`${API_URL}/levels/${encodeURIComponent(level)}`, {
+      headers: { Authorization: `Bearer ${session}` },
+    });
+    if (!res.ok) throw new Error(`level failed: ${res.status}`);
+    return res.json() as Promise<LevelDetail>;
   },
 
   async signOut(session: string): Promise<void> {

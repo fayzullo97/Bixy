@@ -114,3 +114,60 @@ selection to after the level check, not before.
    **with?**"), and the button relabels to "Okay, got it" once revealed.
 7. **Level screens** — see §9 above; only the student's current level
    screen auto-scrolls to their position on open.
+
+---
+
+## Confirmed implementation notes (build pass)
+
+Recorded during the Part 07 build. Each is a place where the design file (§11)
+and the prose above disagreed, or where the design assumed content that doesn't
+exist. The prose won in every case; these note what was built and why.
+
+1. **C2 is not shown.** The All Levels grid in Figma carries a seventh
+   "C2 / Proficiency" card and the level-test radar draws a C2 spoke, but there
+   is no C2 content — `reference-material.json` stops at C1 (366 topics across
+   six tiers) and C1 is already the ceiling in §8.11's placement algorithm. A C2
+   card would open a level screen with nothing in it, so the tier is omitted
+   until content exists. This is the same gap Part 0 records as "No content past
+   C1 tier yet — flagged, not resolved."
+2. **The radar draws the six real tiers, including B1+.** The design's spokes
+   are A1/A2/B1/B2/C1/C2 — dropping B1+ and adding the unreachable C2. The chart
+   uses `LEVELS` instead, so every spoke is a tier a student can actually be
+   placed on. The radar remains display-only, as §12 requires.
+3. **Level names come from the All Levels grid, not the per-level frames.** The
+   "Level A1" frame and the "Reveal the result" frame both show A2's name and
+   description ("Pre-Intermediate / simple, routine tasks") under an A1 heading.
+   The grid is the only place all tiers appear together and is self-consistent,
+   so it is the source; the design's "Elementry" is corrected to "Elementary".
+4. **Topic titles are derived from `topic_id`.** The content has no display
+   title — only the outline (formula, key idea, examples, mistakes) — while the
+   design mocks up curated names. Titles are sentence-cased from the id
+   (`which_that_vs_what_relative` → "Which that vs what relative"). Long ids give
+   long titles; rows truncate.
+5. **Topic subtitles are the first sentence of the topic's `key_idea`.** The
+   design's mocked subtitles are placeholder filler repeated across unrelated
+   rows ("Study of sounds in language" under a grammar topic), so they are not
+   carried over.
+6. **Language selection offers two options, not three.** The Figma frame lists
+   Uzbek, Russian *and* English, which contradicts both the question it is
+   captioned with ("Uzbek or Russian?") and §12's rule that a C1 placement skips
+   the screen and is assigned English automatically. The two-option prose is what
+   is built; English remains the automatic C1 outcome rather than a pick.
+7. **The card deck shows Grammar live and the other four inert.** The Figma main
+   screen mocks Listening up as in-progress; §9's prose is explicit that for MVP
+   a topic's completion "collapses to just Grammar passing" with the other four
+   grayed and not tappable, so the prose is what is built.
+8. **"Reveal the result" has no readable motion spec.** §12 names that frame as
+   the source of truth for the reveal animation's timing and says Claude Code
+   pulls it via the §11 Figma access. The frame renders, but exposes no children
+   and no motion tracks through the MCP API — there is no timing to read out of
+   it. The reveal is built to the frame's composition (headline, tier glyph,
+   Bixy) with three timing constants in `RevealResultScreen.tsx`; if the Motion
+   spec becomes readable, those constants are what it replaces.
+   **This is the one item still genuinely unresolved rather than decided.**
+9. **§12 moves the greeting, not the get-to-know-you conversation.** Step 1 puts
+   Bixy's greeting ahead of the level check. It says nothing about relocating
+   Part 05 §7's five-question meeting, which still runs on the board where Part
+   05 put it, gated by `POST /me/greeting` returning `first_meeting`. Flagged
+   rather than assumed: if the whole meeting was meant to move ahead of the
+   level check, that is a Part 05 change and has not been made.

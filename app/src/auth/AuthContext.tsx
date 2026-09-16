@@ -37,6 +37,9 @@ interface AuthState {
   devLogin: (lang: Lang) => Promise<void>;
   signOut: () => Promise<void>;
   setError: (message: string | null) => void;
+  /** Replace the cached user after a server-side change (Part 07 §12's language
+   *  step), so the UI re-renders in the newly chosen language immediately. */
+  updateUser: (user: UserDto) => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -127,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session]);
 
   const value = useMemo<AuthState>(
-    () => ({ status, user, session, error, retry, devLogin, signOut, setError }),
+    () => ({ status, user, session, error, retry, devLogin, signOut, setError, updateUser: setUser }),
     [status, user, session, error, retry, devLogin, signOut],
   );
 

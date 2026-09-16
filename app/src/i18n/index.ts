@@ -44,6 +44,21 @@ interface Strings {
   levelPlaced: (level: string) => string;
   toYourPlan: string;
   generatingLesson: string;
+  // Home screen & navigation (Part 07 §9).
+  homeTitle: string;
+  homeLevelLabel: (level: string) => string;
+  homeLevelHint: string;
+  homeContinue: string;
+  homeCardCurrent: string;
+  homeCardPassed: string;
+  homeCardUpcoming: string;
+  allLevelsTitle: string;
+  back: string;
+  topicLocked: string;
+  levelTopicCount: (completed: number, total: number) => string;
+  comingSoon: string;
+  /** The reveal headline (Part 07 §12): "Your level is" + the tier name. */
+  revealLead: string;
   // Failure handling (§8.10).
   offline: string;
   lessonTimeoutFailed: string;
@@ -105,6 +120,19 @@ export const strings: Record<Lang, Strings> = {
     levelPlaced: (level) => `You’re placed at ${level}.`,
     toYourPlan: 'Go to your plan',
     generatingLesson: 'Preparing your lesson…',
+    homeTitle: 'General English',
+    homeLevelLabel: (level) => `${level} level`,
+    homeLevelHint: 'Click to see the map of all topics',
+    homeContinue: 'Tap to continue',
+    homeCardCurrent: 'Current topic',
+    homeCardPassed: 'Passed',
+    homeCardUpcoming: 'Upcoming',
+    allLevelsTitle: 'All levels',
+    back: 'Back',
+    topicLocked: 'Pass the current topic to open this one.',
+    levelTopicCount: (completed, total) => `${completed} of ${total} topics done`,
+    comingSoon: 'Coming soon',
+    revealLead: 'Your level is',
     offline: 'You’re offline. Reconnect and reload to continue.',
     lessonTimeoutFailed: 'Your lesson is taking too long to load. Please try again.',
     lessonFailed: 'Something went wrong preparing your lesson. Please try again.',
@@ -160,6 +188,19 @@ export const strings: Record<Lang, Strings> = {
     levelPlaced: (level) => `Siz ${level} darajasiga joylashtirildingiz.`,
     toYourPlan: 'Rejangizga o‘tish',
     generatingLesson: 'Darsingiz tayyorlanmoqda…',
+    homeTitle: 'Umumiy ingliz tili',
+    homeLevelLabel: (level) => `${level} daraja`,
+    homeLevelHint: 'Barcha mavzular xaritasini ko‘rish uchun bosing',
+    homeContinue: 'Davom etish uchun bosing',
+    homeCardCurrent: 'Joriy mavzu',
+    homeCardPassed: 'O‘tilgan',
+    homeCardUpcoming: 'Keyingi',
+    allLevelsTitle: 'Barcha darajalar',
+    back: 'Orqaga',
+    topicLocked: 'Buni ochish uchun joriy mavzuni tugating.',
+    levelTopicCount: (completed, total) => `${total} mavzudan ${completed} tasi tugallandi`,
+    comingSoon: 'Tez orada',
+    revealLead: 'Sizning darajangiz',
     offline: 'Internet aloqasi yo‘q. Davom etish uchun qayta ulanib, sahifani yangilang.',
     lessonTimeoutFailed: 'Darsni yuklash juda uzoq davom etmoqda. Iltimos, qayta urinib ko‘ring.',
     lessonFailed: 'Darsni tayyorlashda xatolik yuz berdi. Iltimos, qayta urinib ko‘ring.',
@@ -215,6 +256,19 @@ export const strings: Record<Lang, Strings> = {
     levelPlaced: (level) => `Ваш уровень — ${level}.`,
     toYourPlan: 'К вашему плану',
     generatingLesson: 'Готовим ваш урок…',
+    homeTitle: 'Общий английский',
+    homeLevelLabel: (level) => `Уровень ${level}`,
+    homeLevelHint: 'Нажмите, чтобы увидеть карту всех тем',
+    homeContinue: 'Нажмите, чтобы продолжить',
+    homeCardCurrent: 'Текущая тема',
+    homeCardPassed: 'Пройдено',
+    homeCardUpcoming: 'Впереди',
+    allLevelsTitle: 'Все уровни',
+    back: 'Назад',
+    topicLocked: 'Пройдите текущую тему, чтобы открыть эту.',
+    levelTopicCount: (completed, total) => `${completed} из ${total} тем пройдено`,
+    comingSoon: 'Скоро',
+    revealLead: 'Ваш уровень',
     offline: 'Нет подключения к интернету. Переподключитесь и перезагрузите страницу, чтобы продолжить.',
     lessonTimeoutFailed: 'Урок загружается слишком долго. Пожалуйста, попробуйте ещё раз.',
     lessonFailed: 'При подготовке урока произошла ошибка. Пожалуйста, попробуйте ещё раз.',

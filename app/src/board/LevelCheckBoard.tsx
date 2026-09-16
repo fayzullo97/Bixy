@@ -3,7 +3,14 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { QuizQuestion } from './types';
 import type { LevelCheckQuestion } from '../api/client';
 import { NoteCard, QuizQuestionCard, type QuizAnswer } from './Quiz';
-import { decideNext, finalPlacement, pickQuestion, SKIP_LEVEL, type Level } from './levelCheck';
+import {
+  decideNext,
+  finalPlacement,
+  pickQuestion,
+  SKIP_LEVEL,
+  type Answered,
+  type Level,
+} from './levelCheck';
 import { FONT_SEMIBOLD } from './fonts';
 
 // The level check (§8.11) on the board itself — no new screen. It reuses the
@@ -27,9 +34,12 @@ interface Props {
   onSeen: (questionId: string) => void;
   /** Persist the final placement when the test resolves. */
   onPlaced: (level: Level) => void;
+  /** Every answer so far, for the radar chart above the test (Part 07 §12).
+   *  Display only — the placement still comes from `decideNext`/`finalPlacement`. */
+  onAnswered?: (answered: ReadonlyArray<Answered>) => void;
 }
 
-export function LevelCheckBoard({ questions, seen, gradeFillIn, onSeen, onPlaced }: Props) {
+export function LevelCheckBoard({ questions, seen, gradeFillIn, onSeen, onPlaced, onAnswered }: Props) {
   const [items, setItems] = useState<Item[]>([]);
   const [answers, setAnswers] = useState<Record<string, QuizAnswer>>({});
   const [placed, setPlaced] = useState<Level | null>(null);
@@ -113,10 +123,11 @@ export function LevelCheckBoard({ questions, seen, gradeFillIn, onSeen, onPlaced
     (key: string, level: Level, answer: QuizAnswer) => {
       setAnswers((m) => ({ ...m, [key]: answer }));
       answeredRef.current = [...answeredRef.current, { level, correct: answer.correct }];
+      onAnswered?.(answeredRef.current);
       setStarted(true);
       advance();
     },
-    [advance],
+    [advance, onAnswered],
   );
 
   const skip = useCallback(() => {
