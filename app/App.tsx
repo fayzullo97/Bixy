@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import { OpenInTelegramScreen } from './src/screens/OpenInTelegramScreen';
 import { SignedInApp } from './src/screens/SignedInApp';
@@ -9,6 +9,7 @@ import { DevLevelCheckScreen } from './src/screens/DevLevelCheckScreen';
 import { DevBixyScreen } from './src/screens/DevBixyScreen';
 import { BoardHost } from './src/board/BoardHost';
 import type { Lang } from './src/i18n';
+import { devRoutesEnabled } from './src/dev/enabled';
 
 // DEV-ONLY: `?dev=board` renders the board without the auth gate for local
 // screenshots. Add `topic=<id>` (or `text=<phrase>`) + `lang=en|uz|ru` to
@@ -22,13 +23,7 @@ function devBoardParams(): {
   lang: Lang;
   resume: boolean;
 } | null {
-  if (
-    Platform.OS !== 'web' ||
-    process.env.EXPO_PUBLIC_DEV_LOGIN !== '1' ||
-    typeof window === 'undefined'
-  ) {
-    return null;
-  }
+  if (!devRoutesEnabled() || typeof window === 'undefined') return null;
   const params = new URLSearchParams(window.location.search);
   if (params.get('dev') !== 'board') return null;
   const beat = params.get('beat');
@@ -49,13 +44,7 @@ function devBoardParams(): {
 // DEV-ONLY: `?dev=levelcheck` runs the level check (§8.11) without the auth gate.
 // Add `lang=en|uz|ru` (narration/UI copy); returns just the language when active.
 function devLevelCheckParams(): { lang: Lang } | null {
-  if (
-    Platform.OS !== 'web' ||
-    process.env.EXPO_PUBLIC_DEV_LOGIN !== '1' ||
-    typeof window === 'undefined'
-  ) {
-    return null;
-  }
+  if (!devRoutesEnabled() || typeof window === 'undefined') return null;
   const params = new URLSearchParams(window.location.search);
   if (params.get('dev') !== 'levelcheck') return null;
   const langParam = params.get('lang');
@@ -87,13 +76,7 @@ function DevTapToStart({ children }: { children: ReactNode }) {
 // preview's controls, for comparing the port against it. `anger=0..100` sets the
 // initial morph amount so a screenshot can be taken at a fixed value.
 function devBixyParams(): { anger: number } | null {
-  if (
-    Platform.OS !== 'web' ||
-    process.env.EXPO_PUBLIC_DEV_LOGIN !== '1' ||
-    typeof window === 'undefined'
-  ) {
-    return null;
-  }
+  if (!devRoutesEnabled() || typeof window === 'undefined') return null;
   const params = new URLSearchParams(window.location.search);
   if (params.get('dev') !== 'bixy') return null;
   const anger = Number(params.get('anger') ?? 0);

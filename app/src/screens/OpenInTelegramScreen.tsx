@@ -2,8 +2,13 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../auth/AuthContext';
 import { LANGUAGES, LANGUAGE_LABELS, strings, type Lang } from '../i18n';
+import { devRoutesEnabled } from '../dev/enabled';
 
-const DEV_LOGIN_ENABLED = process.env.EXPO_PUBLIC_DEV_LOGIN === '1';
+// Same gate as the dev routes: `__DEV__` is what actually keeps this out of a
+// production bundle — the env check alone was stripped by the export (see
+// dev/enabled.ts). The server refuses dev-login in production regardless, but
+// the button should never be on screen for a student to find in the first place.
+const DEV_LOGIN_ENABLED = devRoutesEnabled();
 
 /**
  * Shown when the app is NOT signed in and NOT running inside Telegram (§8.8).

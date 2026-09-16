@@ -137,7 +137,14 @@ them from the descriptions below.
     running
   - Decay: linear decay to 0 over 3 hours of real time from trigger,
     persisted so decay continues correctly across app restarts, not just
-    within one session
+    within one session. **Confirmed implementation (v14.23):** persists
+    `{level, triggeredAt}` and recomputes the decayed value from elapsed
+    time on every app open, with the server-persisted `reteach_all_streak`
+    (Part 05 §8) as the fallback for a device with no local state. This
+    closes a gap found during wiring — without restamping on open, a
+    student returning hours after triggering anger would meet a still-fully
+    -angry Bixy instead of one that had actually decayed while the app was
+    closed.
   - Float and Breathe keep running unchanged underneath Angry-Morph — only
     Look-Around and the shape/color transform change
 
