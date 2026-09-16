@@ -315,6 +315,7 @@ describe('pipeline result cache', () => {
       getTopic: async (id) => (id === topic.topic_id ? topic : null),
       listTopicsCompact: async () => [{ topic_id: topic.topic_id, level: 'B1' }],
       listTopicsForPlan: async () => [{ topic_id: topic.topic_id, level: 'B1', sort_order: 0 }],
+      listTopicsForLevel: async () => [],
     };
   }
   function fakeCache(seed?: BoardScript): LessonCacheRepo {

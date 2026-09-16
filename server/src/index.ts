@@ -15,6 +15,7 @@ import { createAssessmentService } from './modules/assessment/assessment.js';
 import { supabaseLevelCheckRepo } from './modules/level-check/levelCheck.repo.js';
 import { supabaseStudyPlanRepo } from './modules/study-plan/studyPlan.repo.js';
 import { createStudyPlanService } from './modules/study-plan/studyPlan.service.js';
+import { createLevelsService } from './modules/levels/levels.service.js';
 import { createAisha } from './modules/tts/aisha.js';
 import { createOpenAiTts } from './modules/tts/openai.js';
 import { createTtsRouter } from './modules/tts/router.js';
@@ -23,6 +24,7 @@ import { createTtsRouter } from './modules/tts/router.js';
 const db = createSupabase();
 const content = supabaseContentRepo(db);
 const progress = supabaseProgressRepo(db);
+const plans = supabaseStudyPlanRepo(db);
 
 // Narration splits by language (Part 01 §2): Uzbek on AishaAI, Russian and
 // English on OpenAI — one provider for those two so embedded English grammar
@@ -77,7 +79,8 @@ const app = configureApp(express(), {
   lessons,
   assessment: createAssessmentService({ anthropic, model: MODELS.grade }),
   levelCheck: supabaseLevelCheckRepo(db),
-  studyPlan: createStudyPlanService({ content, progress, plans: supabaseStudyPlanRepo(db) }),
+  studyPlan: createStudyPlanService({ content, progress, plans }),
+  levels: createLevelsService({ content, progress, plans }),
   allowDevLogin: env.ALLOW_DEV_LOGIN,
 });
 

@@ -7,6 +7,7 @@ import type { LessonService } from './modules/generation/pipeline.js';
 import type { AssessmentService } from './modules/assessment/assessment.js';
 import type { LevelCheckRepo } from './modules/level-check/levelCheck.repo.js';
 import type { StudyPlanService } from './modules/study-plan/studyPlan.service.js';
+import type { LevelsService } from './modules/levels/levels.service.js';
 
 /**
  * Everything the HTTP layer needs, injected at composition time. Real
@@ -25,6 +26,8 @@ export interface AppDeps {
   assessment: AssessmentService;
   levelCheck: LevelCheckRepo;
   studyPlan: StudyPlanService;
+  /** The level map behind the home screen's level card and screens (Part 07 §9). */
+  levels: LevelsService;
   /** DEV-ONLY: mount the Telegram-bypass sign-in route. Off in production. */
   allowDevLogin?: boolean;
 }

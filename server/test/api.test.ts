@@ -16,6 +16,7 @@ import type { AssessmentService } from '../src/modules/assessment/assessment';
 import type { LevelCheckQuestion, LevelCheckRepo } from '../src/modules/level-check/levelCheck.repo';
 import type { StudyPlanRecord, StudyPlanRepo } from '../src/modules/study-plan/studyPlan.repo';
 import { createStudyPlanService } from '../src/modules/study-plan/studyPlan.service';
+import { createLevelsService } from '../src/modules/levels/levels.service';
 
 // ---- In-memory fakes (no live Telegram or Supabase needed) -------------------
 
@@ -43,6 +44,10 @@ function fakeUsersRepo() {
     async setLastGreetedAt(telegramId: string, iso: string) {
       const prev = store.get(telegramId);
       if (prev) store.set(telegramId, { ...prev, last_greeted_at: iso });
+    },
+    async setAppLanguage(telegramId: string, language: string) {
+      const prev = store.get(telegramId);
+      if (prev) store.set(telegramId, { ...prev, app_language: language as UserRecord['app_language'] });
     },
     async completeMeeting(telegramId: string, profile: StudentProfile, iso: string) {
       const prev = store.get(telegramId);
@@ -129,6 +134,11 @@ const fakeContent: ContentRepo = {
       { topic_id: 'comparative_adjectives', level: 'A2', sort_order: 4 },
       { topic_id: 'past_simple', level: 'A2', sort_order: 3 },
     ];
+  },
+  async listTopicsForLevel(level) {
+    return (await this.listTopicsForPlan())
+      .filter((t) => t.level === level)
+      .map((t) => ({ ...t, key_idea: `About ${t.topic_id}.` }));
   },
 };
 
@@ -267,6 +277,11 @@ function buildApp() {
     assessment: fakeAssessment,
     levelCheck: levelCheck.repo,
     studyPlan: createStudyPlanService({
+      content: fakeContent,
+      progress: progress.repo,
+      plans: plans.repo,
+    }),
+    levels: createLevelsService({
       content: fakeContent,
       progress: progress.repo,
       plans: plans.repo,
@@ -919,5 +934,132 @@ describe('sign-out preserves saved progress (§8.9)', () => {
       quiz_score: 90,
       mastered: true,
     });
+  });
+});
+
+describe('level map (Part 07 §9)', () => {
+  const place = (app: ReturnType<typeof buildApp>['app'], session: string, level: string) =>
+    request(app).put('/level-check/placement').set('Authorization', `Bearer ${session}`).send({ level });
+  const pass = (app: ReturnType<typeof buildApp>['app'], session: string, topicId: string) =>
+    request(app)
+      .put(`/progress/${topicId}`)
+      .set('Authorization', `Bearer ${session}`)
+      .send({ status: 'passed' });
+  const getMap = (app: ReturnType<typeof buildApp>['app'], session: string) =>
+    request(app).get('/levels').set('Authorization', `Bearer ${session}`);
+  const getLevel = (app: ReturnType<typeof buildApp>['app'], session: string, level: string) =>
+    request(app).get(`/levels/${encodeURIComponent(level)}`).set('Authorization', `Bearer ${session}`);
+
+  it('requires auth on both endpoints', async () => {
+    const { app } = buildApp();
+    expect((await request(app).get('/levels')).status).toBe(401);
+    expect((await request(app).get('/levels/A1')).status).toBe(401);
+  });
+
+  it('lists every tier, with the placement tier reading as in progress', async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    await place(app, session, 'A1');
+
+    const res = await getMap(app, session);
+    expect(res.status).toBe(200);
+    expect(res.body.placement).toBe('A1');
+    expect(res.body.levels.map((l: { level: string }) => l.level)).toEqual([
+      'A1', 'A2', 'B1', 'B1+', 'B2', 'C1',
+    ]);
+    expect(res.body.levels[0]).toMatchObject({ level: 'A1', status: 'in_progress', completed: 0, total: 3 });
+    expect(res.body.levels[1]).toMatchObject({ level: 'A2', status: 'not_started', total: 3 });
+  });
+
+  it('counts passes and completes a tier once every topic in it is passed', async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    await place(app, session, 'A1');
+
+    for (const id of ['present_simple_be', 'present_simple', 'articles_a_an']) {
+      await pass(app, session, id);
+    }
+    const res = await getMap(app, session);
+    expect(res.body.levels[0]).toMatchObject({ status: 'completed', completed: 3, total: 3 });
+  });
+
+  it("serves a tier's topics in the student's own path order, with statuses", async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    await place(app, session, 'A1');
+    await pass(app, session, 'present_simple_be');
+
+    const res = await getLevel(app, session, 'A1');
+    expect(res.status).toBe(200);
+    expect(res.body.topics.map((t: { topic_id: string }) => t.topic_id)).toEqual([
+      'present_simple_be', 'present_simple', 'articles_a_an',
+    ]);
+    expect(res.body.topics.map((t: { status: string }) => t.status)).toEqual([
+      'passed', 'current', 'locked',
+    ]);
+    expect(res.body.topics[0].key_idea).toBe('About present_simple_be.');
+  });
+
+  it('auto-scrolls only the current level, to the in-progress position', async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    await place(app, session, 'A1');
+    await pass(app, session, 'present_simple_be');
+
+    expect((await getLevel(app, session, 'A1')).body.scroll_to).toBe(1);
+    // A tier the student has not reached has nothing to scroll to.
+    expect((await getLevel(app, session, 'A2')).body.scroll_to).toBeNull();
+  });
+
+  it('404s an unknown tier rather than serving an empty one', async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    expect((await getLevel(app, session, 'C2')).status).toBe(404);
+    expect((await getLevel(app, session, 'nonsense')).status).toBe(404);
+  });
+
+  it('serves an unplaced student a readable map rather than failing', async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    const res = await getMap(app, session);
+    expect(res.body.placement).toBeNull();
+    expect(res.body.levels.every((l: { status: string }) => l.status === 'not_started')).toBe(true);
+  });
+});
+
+describe('language selection (Part 07 §12)', () => {
+  const setLanguage = (app: ReturnType<typeof buildApp>['app'], session: string, language: unknown) =>
+    request(app).put('/me/language').set('Authorization', `Bearer ${session}`).send({ language });
+
+  it('requires auth', async () => {
+    const { app } = buildApp();
+    expect((await request(app).put('/me/language').send({ language: 'uz' })).status).toBe(401);
+  });
+
+  it('stores the choice and returns the updated user', async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+
+    const res = await setLanguage(app, session, 'uz');
+    expect(res.status).toBe(200);
+    expect(res.body.user.appLanguage).toBe('uz');
+
+    // And it sticks for the next read, rather than only echoing back.
+    const me = await request(app).get('/me').set('Authorization', `Bearer ${session}`);
+    expect(me.body.user.appLanguage).toBe('uz');
+  });
+
+  it('accepts the automatic English a C1 placement takes', async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    expect((await setLanguage(app, session, 'en')).body.user.appLanguage).toBe('en');
+  });
+
+  it('rejects a language outside the supported set', async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    for (const bad of ['fr', '', null, 42]) {
+      expect((await setLanguage(app, session, bad)).status).toBe(400);
+    }
   });
 });

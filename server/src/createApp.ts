@@ -12,6 +12,7 @@ import { lessonsRoutes } from './modules/generation/lessons.routes.js';
 import { assessmentRoutes } from './modules/assessment/assessment.routes.js';
 import { levelCheckRoutes } from './modules/level-check/levelCheck.routes.js';
 import { studyPlanRoutes } from './modules/study-plan/studyPlan.routes.js';
+import { levelsRoutes } from './modules/levels/levels.routes.js';
 
 /**
  * Mounts middleware and routes onto an Express app from injected dependencies. No
@@ -38,6 +39,7 @@ export function configureApp(app: Express, deps: AppDeps): Express {
   app.use('/assessment', assessmentRoutes(deps));
   app.use('/level-check', levelCheckRoutes(deps));
   app.use('/study-plan', studyPlanRoutes(deps));
+  app.use('/levels', levelsRoutes(deps));
 
   if (deps.allowDevLogin) {
     app.use('/auth/dev-login', devLoginRoutes(deps));

@@ -69,6 +69,24 @@ export function userRoutes(deps: AppDeps): Router {
     res.json({ variant: stage });
   });
 
+  // The student's language choice (Part 07 §12). Asked AFTER the level check,
+  // because a C1 placement skips the question entirely — English is already that
+  // tier's language (Part 01 §1) — so it can't be asked at sign-in.
+  router.put('/language', requireAuth(deps.session), async (req, res) => {
+    const language = (req.body as { language?: unknown })?.language;
+    if (language !== 'en' && language !== 'uz' && language !== 'ru') {
+      res.status(400).json({ error: 'language must be one of en, uz, ru' });
+      return;
+    }
+    await deps.users.setAppLanguage(req.telegramId!, language);
+    const user = await deps.users.get(req.telegramId!);
+    if (!user) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+    res.json({ user: toUserDto(user) });
+  });
+
   // Close the first meeting (Part 05 §7) — sent when the student finishes the
   // get-to-know-you OR skips it. Both stamp `met_at`, so a skip is a decision the
   // app remembers rather than a question it re-asks on the next visit.

@@ -37,6 +37,9 @@ export interface UsersRepo {
   /** Close the first meeting (Part 05 §7): store whatever the student answered
    *  and stamp `met_at`. Called for a skip too, with an empty profile. */
   completeMeeting(telegramId: string, profile: StudentProfile, iso: string): Promise<void>;
+  /** The student's chosen UI language (Part 07 §12) — set after the level check,
+   *  not at sign-in, so it can't be asked before the placement is known. */
+  setAppLanguage(telegramId: string, language: string): Promise<void>;
 }
 
 export function supabaseUsersRepo(db: SupabaseClient): UsersRepo {
@@ -75,6 +78,14 @@ export function supabaseUsersRepo(db: SupabaseClient): UsersRepo {
       const { error } = await db
         .from('users')
         .update({ last_greeted_at: iso, updated_at: new Date().toISOString() })
+        .eq('telegram_id', telegramId);
+      if (error) throw error;
+    },
+
+    async setAppLanguage(telegramId, language) {
+      const { error } = await db
+        .from('users')
+        .update({ app_language: language, updated_at: new Date().toISOString() })
         .eq('telegram_id', telegramId);
       if (error) throw error;
     },

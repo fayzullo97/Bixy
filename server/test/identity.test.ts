@@ -92,6 +92,7 @@ describe('ask() routes an identity question before anything else (Part 05 §8)',
     getTopic: async (id) => (id === topic.topic_id ? topic : null),
     listTopicsCompact: async () => [{ topic_id: topic.topic_id, level: 'B1' }],
     listTopicsForPlan: async () => [{ topic_id: topic.topic_id, level: 'B1', sort_order: 0 }],
+    listTopicsForLevel: async () => [],
   };
   const cache: LessonCacheRepo = { get: async () => null, put: async () => {} };
 

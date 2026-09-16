@@ -54,6 +54,7 @@ function fakeContent(): ContentRepo {
       { topic_id: 'past_simple_tense', level: 'A2' },
     ],
     listTopicsForPlan: async () => [],
+    listTopicsForLevel: async () => [],
   };
 }
 
