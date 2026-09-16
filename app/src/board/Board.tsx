@@ -14,6 +14,7 @@ import { pickScoreReaction } from './scoreReaction';
 import { gradeFillInLocally } from './gradeLocal';
 import { buildResumeState } from './resume';
 import { registerHideBackstop } from '../progress/backstop';
+import { BoardGrid } from './BoardGrid';
 import { FONT_REGULAR, FONT_SEMIBOLD } from './fonts';
 
 // The board is one continuous, append-only surface (§8.4/§11): lesson beats, then
@@ -491,6 +492,10 @@ export function Board({ script, catalog, seekTo, showSubtitles, resumeFromBeatId
   return (
     <View style={styles.board}>
       <ScrollView ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Part 08 §15: the grid fills the scroll content box, so it grows with
+            the lesson (Part 03 §4's flex layout) and paints below the blocks —
+            DOM order is paint order within this one stacking context. */}
+        <BoardGrid />
         {blocks.map((block) => {
           if (block.kind === 'scene') {
             const animate = live && newestKey !== undefined && block.keys.includes(newestKey);
@@ -635,7 +640,11 @@ function Subtitle({ unit, positionMs }: { unit: SpokenUnit; positionMs: number }
 
 const styles = StyleSheet.create({
   board: { flex: 1, backgroundColor: '#12151c' },
-  content: { paddingHorizontal: 28, paddingTop: 32, paddingBottom: 80, gap: 4 },
+  // `flexGrow: 1` so a short lesson's content box still fills the viewport:
+  // Part 08 §15's grid is painted across this box, and without it the grid would
+  // stop where the content does and leave a visible edge on a near-empty board.
+  // Same flex mechanism Part 03 §4 already grows the board with — not a second one.
+  content: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 32, paddingBottom: 80, gap: 4 },
   subtitleBar: {
     position: 'absolute',
     left: 0,

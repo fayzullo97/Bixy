@@ -8,6 +8,7 @@ import { DevBoardScreen } from './src/screens/DevBoardScreen';
 import { DevLevelCheckScreen } from './src/screens/DevLevelCheckScreen';
 import { DevBixyScreen } from './src/screens/DevBixyScreen';
 import { DevHomeScreen, type DevHomeScreenName } from './src/screens/DevHomeScreen';
+import { FullscreenFrame } from './src/telegram/FullscreenFrame';
 import { BoardHost } from './src/board/BoardHost';
 import type { Lang } from './src/i18n';
 import { devRoutesEnabled } from './src/dev/enabled';
@@ -166,7 +167,12 @@ export default function App() {
   return (
     <AuthProvider>
       <StatusBar style="light" />
-      <Root />
+      {/* Part 08 §15: fullscreen on launch, insets respected, manual exit. Wraps
+          only the real app — the dev routes above return before this point, so a
+          screenshot run never fights Telegram for the window. */}
+      <FullscreenFrame>
+        <Root />
+      </FullscreenFrame>
     </AuthProvider>
   );
 }
