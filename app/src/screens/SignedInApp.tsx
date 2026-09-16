@@ -17,9 +17,9 @@ import { PathBoardScreen } from './PathBoardScreen';
 
 type Screen =
   | 'loading'
+  | 'language'
   | 'greeting'
   | 'levelcheck'
-  | 'language'
   | 'reveal'
   | 'home'
   | 'alllevels'
@@ -31,18 +31,25 @@ type Screen =
  * The signed-in flow (§8.12, Part 07 §9/§12).
  *
  * §12's onboarding order, for a student with no plan yet:
- *   greeting → level test → language → reveal → home
+ *   language → greeting → level test → reveal → home
  *
- * Language selection sits **after** the level check on purpose (§12): a C1
- * placement skips it entirely and is assigned English automatically, because C1
- * is already the fully-English tier (Part 01 §1) — which can only be decided once
- * the placement is known. A student who already has a plan skips the whole
- * onboarding and lands on the home screen.
+ * Language selection runs **first** so everything after it — the greeting
+ * included — speaks the student's own language. That is a reversal of what §12's
+ * prose says (it put the question after the level check, on the grounds that the
+ * greeting had no language to play in); see this part's build notes.
  *
- * Note this screen does NOT own Part 05 §7's get-to-know-you conversation. §12
- * moves the *greeting* ahead of the level check; it says nothing about relocating
- * the five-question meeting, which still runs on the board where Part 05 put it
- * and which `POST /me/greeting` still gates on `first_meeting`.
+ * A C1 placement still lands on English (Part 01 §1: C1 is the fully-English
+ * tier), but as an **override applied after the placement** rather than as a
+ * skipped question — the placement isn't known when the question is asked any
+ * more. What already played in the chosen language, notably the greeting, is not
+ * retroactively changed; only content from the reveal onward is affected.
+ *
+ * A student who already has a plan skips the whole onboarding and lands on home.
+ *
+ * Note this screen does NOT own Part 05 §7's get-to-know-you conversation. It
+ * owns the *introduction* that used to open it (now folded into the greeting);
+ * the five questions still run on the board, gated on `POST /me/greeting`
+ * returning `first_meeting`.
  */
 export function SignedInApp() {
   const { user, session, updateUser } = useAuth();
@@ -77,8 +84,9 @@ export function SignedInApp() {
       const p = await api.getStudyPlan(session);
       setPlan(p);
       if (!p) {
-        // Unplaced: §12 starts at the greeting, not at the test.
-        setView('greeting');
+        // Unplaced: onboarding starts at the language question, so that the
+        // greeting immediately after it can be spoken in that language.
+        setView('language');
         return;
       }
       const level = asTopicLevel(p.level);
@@ -96,22 +104,20 @@ export function SignedInApp() {
   }, [loadHome]);
 
   /**
-   * §12 step 2 → 3: a C1 placement skips the language question and takes English
-   * automatically; every other tier is asked.
+   * Placement → reveal. A C1 placement overrides the content language to English
+   * (Part 01 §1) on the way through, because the language question was answered
+   * before the tier was known. The override is forward-looking only: the greeting
+   * already played in whatever the student picked, and that stands.
    */
   const afterPlacement = useCallback(
     async (level: Level) => {
       setPlaced(level);
-      if (level !== 'C1') {
-        setView('language');
-        return;
-      }
-      if (session) {
+      if (level === 'C1' && session) {
         try {
           updateUser(await api.setLanguage(session, 'en'));
         } catch {
-          // A failed write leaves the server's derived language in place, which
-          // is still a usable language — not a reason to block the reveal.
+          // A failed write leaves the student's own choice in place, which is
+          // still a usable language — not a reason to block the reveal.
         }
       }
       setView('reveal');
@@ -119,6 +125,7 @@ export function SignedInApp() {
     [session, updateUser],
   );
 
+  /** Onboarding step 1. The greeting follows, and reads in what was picked here. */
   const chooseLanguage = useCallback(
     async (lang: Lang) => {
       if (!session) return;
@@ -128,7 +135,7 @@ export function SignedInApp() {
         fail();
         return;
       }
-      setView('reveal');
+      setView('greeting');
     },
     [session, updateUser, fail],
   );
@@ -176,16 +183,26 @@ export function SignedInApp() {
     );
   }
 
+  if (view === 'language') {
+    return <LanguageSelectScreen onSelect={chooseLanguage} />;
+  }
+
   if (view === 'greeting') {
-    return <GreetingScreen name={user?.name ?? null} onContinue={() => setView('levelcheck')} />;
+    return (
+      <GreetingScreen
+        name={user?.name ?? null}
+        language={language}
+        // Bixy introduces itself here only if it hasn't already — the board's
+        // conversation is what stamps `met_at`, so this stays true until then.
+        firstMeeting={user?.metAt == null}
+        session={session}
+        onContinue={() => setView('levelcheck')}
+      />
+    );
   }
 
   if (view === 'levelcheck') {
     return <LevelCheckScreen session={session} language={language} onPlaced={afterPlacement} />;
-  }
-
-  if (view === 'language') {
-    return <LanguageSelectScreen onSelect={chooseLanguage} />;
   }
 
   if (view === 'reveal' && placed) {

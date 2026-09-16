@@ -171,3 +171,43 @@ exist. The prose won in every case; these note what was built and why.
    05 put it, gated by `POST /me/greeting` returning `first_meeting`. Flagged
    rather than assumed: if the whole meeting was meant to move ahead of the
    level check, that is a Part 05 change and has not been made.
+   **Partly superseded by note 10** — the *introduction* did move; the five
+   questions did not.
+10. **The onboarding order was reversed against §12's prose: language selection
+    now runs FIRST.** §12 above is explicit that language selection "happens
+    **after** the level check, not before" (that is the stated headline of the
+    v14.12 change), and step 1 justifies an English-only greeting on the grounds
+    that "the student's language preference isn't known yet." The built order is
+    **language → greeting → level check → reveal → home**, which inverts that.
+    This was a deliberate instruction during the build, not a reading of the
+    prose; the prose above is left as the record of what §12 said. What it
+    changes:
+    - **The greeting is localized.** It plays in the language just chosen, so
+      `GreetingScreen` takes a `language` prop and reads from `strings`.
+    - **The introduction folded into the greeting.** Part 05 §7's "hi, I'm Bixy"
+      (name + capability) is now the greeting's second line for a student with no
+      `met_at`, rather than the opening step of the board conversation. The
+      conversation itself is unchanged and still on the board — same `met_at`
+      gate, same stamp on finish-or-skip, still no `last_greeted_at` write — it
+      just opens on the first question now.
+    - **C1 becomes an override, not a skipped question.** §12 step 3 skips the
+      language screen for a C1 placement. The tier isn't known that early any
+      more, so every student is asked, and a C1 placement then overrides the
+      content language to English on the way to the reveal (Part 01 §1). It is
+      forward-looking only: the greeting already played in the student's pick and
+      is not retroactively restated.
+    - **`met_at` is now on the user DTO.** The greeting screen has to know
+      whether Bixy has introduced itself, and it runs before the board.
+      `POST /me/greeting` can't answer that for it — it stamps `last_greeted_at`
+      as a side effect, so calling it from the greeting would consume the
+      day-boundary greeting the board is about to show. `GET /me` carries
+      `metAt` instead.
+11. **The day-boundary greeting stays on the board.** §12's greeting step is the
+    onboarding one, reached only while the student has no plan. A returning
+    student with a plan goes straight to home and gets the full/short greeting on
+    the board exactly as before, from `POST /me/greeting`. The onboarding
+    greeting screen deliberately makes no greeting call and stamps nothing, so
+    the two surfaces don't consume each other's state. The consequence worth
+    knowing: a student who somehow reaches the onboarding greeting *after*
+    having met Bixy (a plan deleted but `met_at` kept — what the reset script
+    avoids by clearing both) sees a plain greeting there, not a full/short one.

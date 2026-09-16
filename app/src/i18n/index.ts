@@ -18,14 +18,19 @@ interface Strings {
   openInTelegramBody: string;
   signingIn: string;
   greeting: (name: string) => string;
+  /** Bixy's one-time self-introduction (Part 05 §7). Shown with the greeting
+   *  (Part 07 §12 step 2) while the student has no `met_at` — it used to open
+   *  the board's get-to-know-you, which now starts at the first question. */
+  bixyIntro: string;
+  /** Tap-anywhere hint under the greeting. */
+  greetingContinue: string;
   boardPlaceholder: string;
   signOut: string;
   loading: string;
-  // The first meeting (Part 05 §7). `meetIntro` is Bixy introducing itself;
-  // the five questions follow, each individually skippable.
-  meetIntro: string;
+  // The first meeting (Part 05 §7) — now the get-to-know-you conversation only:
+  // the introduction moved to the greeting (Part 07 §12). `meetOffer` leads the
+  // first question; the five questions are each individually skippable.
   meetOffer: string;
-  meetStart: string;
   meetSkipAll: string;
   meetSkip: string;
   meetNext: string;
@@ -59,6 +64,8 @@ interface Strings {
   comingSoon: string;
   /** The reveal headline (Part 07 §12): "Your level is" + the tier name. */
   revealLead: string;
+  /** Tap-anywhere hint on the reveal screen, once its entrance animation settles. */
+  revealContinue: string;
   // Failure handling (§8.10).
   offline: string;
   lessonTimeoutFailed: string;
@@ -90,13 +97,13 @@ export const strings: Record<Lang, Strings> = {
       'This app runs inside Telegram. Open it from the bot in Telegram to start learning.',
     signingIn: 'Signing you in…',
     greeting: (name) => `Hi, ${name} 👋`,
+    bixyIntro:
+      'I’m Bixy. I teach English grammar on a board: I’ll write, draw and talk you through a topic, and you can stop me any time to ask about it again.',
+    greetingContinue: 'Tap to continue',
     boardPlaceholder: 'Your whiteboard will appear here.',
     signOut: 'Sign out',
     loading: 'Loading…',
-    meetIntro:
-      'Hi — I’m Bixy. I teach English grammar on this board: I’ll write, draw and talk you through a topic, and you can stop me any time to ask about it again.',
     meetOffer: 'Before we start, tell me a little about yourself — so I can explain things in a way that fits you.',
-    meetStart: 'Sure, ask away',
     meetSkipAll: 'Skip for now',
     meetSkip: 'Skip',
     meetNext: 'Next',
@@ -133,6 +140,7 @@ export const strings: Record<Lang, Strings> = {
     levelTopicCount: (completed, total) => `${completed} of ${total} topics done`,
     comingSoon: 'Coming soon',
     revealLead: 'Your level is',
+    revealContinue: 'Tap to continue',
     offline: 'You’re offline. Reconnect and reload to continue.',
     lessonTimeoutFailed: 'Your lesson is taking too long to load. Please try again.',
     lessonFailed: 'Something went wrong preparing your lesson. Please try again.',
@@ -158,13 +166,13 @@ export const strings: Record<Lang, Strings> = {
       'Bu ilova Telegram ichida ishlaydi. O‘rganishni boshlash uchun uni Telegramdagi botdan oching.',
     signingIn: 'Tizimga kiritilmoqda…',
     greeting: (name) => `Salom, ${name} 👋`,
+    bixyIntro:
+      'Men Bixy. Doskada ingliz tili grammatikasini o‘rgataman: mavzuni yozib, chizib va gapirib tushuntiraman, siz esa istagan payt to‘xtatib, qayta so‘rashingiz mumkin.',
+    greetingContinue: 'Davom etish uchun bosing',
     boardPlaceholder: 'Doskangiz shu yerda paydo bo‘ladi.',
     signOut: 'Chiqish',
     loading: 'Yuklanmoqda…',
-    meetIntro:
-      'Salom — men Bixy. Shu doskada ingliz tili grammatikasini o‘rgataman: mavzuni yozib, chizib va gapirib tushuntiraman, siz esa istagan payt to‘xtatib, qayta so‘rashingiz mumkin.',
     meetOffer: 'Boshlashdan oldin o‘zingiz haqingizda biroz aytib bering — tushuntirishlarimni sizga moslashtiraman.',
-    meetStart: 'Mayli, so‘rang',
     meetSkipAll: 'Hozircha o‘tkazib yuborish',
     meetSkip: 'O‘tkazib yuborish',
     meetNext: 'Keyingisi',
@@ -201,6 +209,7 @@ export const strings: Record<Lang, Strings> = {
     levelTopicCount: (completed, total) => `${total} mavzudan ${completed} tasi tugallandi`,
     comingSoon: 'Tez orada',
     revealLead: 'Sizning darajangiz',
+    revealContinue: 'Davom etish uchun bosing',
     offline: 'Internet aloqasi yo‘q. Davom etish uchun qayta ulanib, sahifani yangilang.',
     lessonTimeoutFailed: 'Darsni yuklash juda uzoq davom etmoqda. Iltimos, qayta urinib ko‘ring.',
     lessonFailed: 'Darsni tayyorlashda xatolik yuz berdi. Iltimos, qayta urinib ko‘ring.',
@@ -226,13 +235,13 @@ export const strings: Record<Lang, Strings> = {
       'Это приложение работает внутри Telegram. Откройте его через бота в Telegram, чтобы начать.',
     signingIn: 'Выполняется вход…',
     greeting: (name) => `Привет, ${name} 👋`,
+    bixyIntro:
+      'Я Бикси. Я объясняю английскую грамматику на доске: пишу, рисую и рассказываю, а вы в любой момент можете остановить меня и спросить ещё раз.',
+    greetingContinue: 'Нажмите, чтобы продолжить',
     boardPlaceholder: 'Здесь появится ваша доска.',
     signOut: 'Выйти',
     loading: 'Загрузка…',
-    meetIntro:
-      'Привет — я Бикси. Я объясняю английскую грамматику на этой доске: пишу, рисую и рассказываю, а вы в любой момент можете остановить меня и спросить ещё раз.',
     meetOffer: 'Прежде чем начать, расскажите немного о себе — так я смогу объяснять понятнее именно для вас.',
-    meetStart: 'Хорошо, спрашивайте',
     meetSkipAll: 'Пропустить пока',
     meetSkip: 'Пропустить',
     meetNext: 'Дальше',
@@ -269,6 +278,7 @@ export const strings: Record<Lang, Strings> = {
     levelTopicCount: (completed, total) => `${completed} из ${total} тем пройдено`,
     comingSoon: 'Скоро',
     revealLead: 'Ваш уровень',
+    revealContinue: 'Нажмите, чтобы продолжить',
     offline: 'Нет подключения к интернету. Переподключитесь и перезагрузите страницу, чтобы продолжить.',
     lessonTimeoutFailed: 'Урок загружается слишком долго. Пожалуйста, попробуйте ещё раз.',
     lessonFailed: 'При подготовке урока произошла ошибка. Пожалуйста, попробуйте ещё раз.',

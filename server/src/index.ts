@@ -81,6 +81,7 @@ const app = configureApp(express(), {
   levelCheck: supabaseLevelCheckRepo(db),
   studyPlan: createStudyPlanService({ content, progress, plans }),
   levels: createLevelsService({ content, progress, plans }),
+  tts,
   allowDevLogin: env.ALLOW_DEV_LOGIN,
 });
 

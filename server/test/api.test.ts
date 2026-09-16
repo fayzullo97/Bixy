@@ -17,6 +17,7 @@ import type { LevelCheckQuestion, LevelCheckRepo } from '../src/modules/level-ch
 import type { StudyPlanRecord, StudyPlanRepo } from '../src/modules/study-plan/studyPlan.repo';
 import { createStudyPlanService } from '../src/modules/study-plan/studyPlan.service';
 import { createLevelsService } from '../src/modules/levels/levels.service';
+import type { TtsClient } from '../src/modules/tts/client';
 
 // ---- In-memory fakes (no live Telegram or Supabase needed) -------------------
 
@@ -260,6 +261,35 @@ function fakeStudyPlanRepo() {
   return { repo, store };
 }
 
+/** PCM16 mono 24kHz WAV of a given duration — enough for narrate() to accept
+ *  as a real clip without hitting a live provider (matches test/narrate.test.ts). */
+function wavOfMs(ms: number): Buffer {
+  const bytes = Math.round((ms / 1000) * 24000 * 2);
+  const data = Buffer.alloc(bytes);
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0, 'ascii');
+  header.writeUInt32LE(36 + data.length, 4);
+  header.write('WAVE', 8, 'ascii');
+  header.write('fmt ', 12, 'ascii');
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(24000, 24);
+  header.writeUInt32LE(24000 * 2, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write('data', 36, 'ascii');
+  header.writeUInt32LE(data.length, 40);
+  return Buffer.concat([header, data]);
+}
+
+const fakeTts: TtsClient = {
+  enabled: true,
+  async synthesize(text) {
+    return wavOfMs(text.length * 10);
+  },
+};
+
 function buildApp() {
   const users = fakeUsersRepo();
   const progress = fakeProgressRepo();
@@ -286,6 +316,7 @@ function buildApp() {
       progress: progress.repo,
       plans: plans.repo,
     }),
+    tts: fakeTts,
   });
   return { app, users, progress, levelCheck, plans };
 }
@@ -868,10 +899,57 @@ describe('greeting variant (§8.12, Part 05 §7)', () => {
     });
   });
 
+  it('surfaces met_at on the user, so the greeting can carry the introduction', async () => {
+    // Part 07 §12: the introduction now plays with the greeting, which runs
+    // before the board. The client has to know whether Bixy has already
+    // introduced itself WITHOUT asking POST /me/greeting, because that endpoint
+    // stamps last_greeted_at and would burn the board's own greeting.
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    const me = () => request(app).get('/me').set('Authorization', `Bearer ${session}`);
+
+    expect((await me()).body.user.metAt).toBeNull();
+
+    await request(app).post('/me/profile').set('Authorization', `Bearer ${session}`).send({});
+
+    expect((await me()).body.user.metAt).toEqual(expect.any(String));
+  });
+
   it('requires auth', async () => {
     const { app } = buildApp();
     expect((await request(app).post('/me/greeting')).status).toBe(401);
     expect((await request(app).post('/me/profile')).status).toBe(401);
+  });
+});
+
+describe('greeting audio (Part 07 §12 step 2)', () => {
+  it('synthesizes the exact text the client sends, in the WAV bytes', async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+
+    const res = await request(app)
+      .post('/me/greeting-audio')
+      .set('Authorization', `Bearer ${session}`)
+      .send({ text: 'Hi, Fayzullo' });
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toBe('audio/wav');
+    expect(res.body.length).toBeGreaterThan(44); // header + at least one sample
+  });
+
+  it('rejects an empty or missing text', async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    const res = await request(app)
+      .post('/me/greeting-audio')
+      .set('Authorization', `Bearer ${session}`)
+      .send({ text: '   ' });
+    expect(res.status).toBe(400);
+  });
+
+  it('requires auth', async () => {
+    const { app } = buildApp();
+    expect((await request(app).post('/me/greeting-audio')).status).toBe(401);
   });
 });
 

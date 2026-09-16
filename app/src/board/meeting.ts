@@ -1,10 +1,15 @@
 /**
  * The one-time first meeting (Part 05 §7), as pure state.
  *
- * Bixy introduces itself and then asks a short set of get-to-know-you questions.
- * Every step is skippable — one question, or the whole conversation — so the
- * interesting behaviour here is what a skip does, which is why it lives outside
- * the component and is tested directly.
+ * A short set of get-to-know-you questions. Every step is skippable — one
+ * question, or the whole conversation — so the interesting behaviour here is
+ * what a skip does, which is why it lives outside the component and is tested
+ * directly.
+ *
+ * The introduction Bixy used to open this with moved to the greeting (Part 07
+ * §12 step 2), which now runs before the level check and in the student's own
+ * language. So the conversation starts at the first question: by the time it
+ * runs, Bixy has already said who it is, and saying it twice reads as a bug.
  */
 
 /** The questions, in the order they're asked. Keys match the server's profile. */
@@ -21,24 +26,19 @@ export type MeetingField = (typeof MEETING_FIELDS)[number];
 export type MeetingAnswers = Partial<Record<MeetingField, string>>;
 
 export interface MeetingState {
-  /** 'intro' is Bixy introducing itself; then one step per field; then 'done'. */
-  step: 'intro' | 'question' | 'done';
+  /** One step per field, then 'done'. */
+  step: 'question' | 'done';
   /** Index into MEETING_FIELDS while `step` is 'question'. */
   index: number;
   answers: MeetingAnswers;
 }
 
-export const initialMeeting: MeetingState = { step: 'intro', index: 0, answers: {} };
+export const initialMeeting: MeetingState = { step: 'question', index: 0, answers: {} };
 
 /** The field being asked right now, or null outside the question steps. */
 export function currentField(state: MeetingState): MeetingField | null {
   if (state.step !== 'question') return null;
   return MEETING_FIELDS[state.index] ?? null;
-}
-
-/** Bixy has finished introducing itself — move to the first question. */
-export function beginQuestions(state: MeetingState): MeetingState {
-  return { ...state, step: 'question', index: 0 };
 }
 
 /** Move past the current question, ending the meeting after the last one. */

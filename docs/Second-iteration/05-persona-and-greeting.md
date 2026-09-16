@@ -42,6 +42,16 @@ missing, and that's what this section actually builds.
   tone-shift reason described in §8). This is personalizing in the places
   it's actually free, not a reduced version of the original intent.
 
+- **Amended by the Part 07 §12 reorder (build pass):** the **introduction**
+  no longer opens this sequence. Onboarding now runs language → greeting →
+  level check, and Bixy's "hi, I'm Bixy" (name + capability) plays with that
+  greeting, in the student's chosen language, while `met_at` is null. What
+  remains here is the get-to-know-you conversation, which still runs at the
+  start of the first lesson on the board, still opens only while `met_at` is
+  null, still stamps `met_at` on finish **or** skip, and still deliberately
+  does not stamp `last_greeted_at`. It simply opens on the first question
+  instead of on an introduction. See Part 07's build notes 10 and 11.
+
 **(Day-boundary greeting, for reference — already shipped, not rebuilt
 here):**
 - Returning student, first visit of a calendar day: a full greeting.

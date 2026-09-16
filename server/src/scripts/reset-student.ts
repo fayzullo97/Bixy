@@ -11,7 +11,7 @@ import { env } from '../config/env.js';
  *   npm run reset-student -- <telegram_id> [--dry-run] [--yes]
  *
  * What a reset student sees on the next load: no plan, so Part 07 §12 runs from
- * the top (greeting → level check → language → reveal → home), then Part 05 §7's
+ * the top (language → greeting → level check → reveal → home), then Part 05 §7's
  * first meeting on the board, then a `full` greeting after it.
  *
  * This is a PROGRESS reset, not an account wipe. The users row survives with

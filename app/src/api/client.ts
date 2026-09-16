@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import type { Lang } from '../i18n';
 import type { BoardScript, QuizQuestion } from '../board/types';
 
@@ -25,6 +26,9 @@ export interface UserDto {
   username: string | null;
   photoUrl: string | null;
   appLanguage: Lang;
+  /** When Bixy first introduced itself (Part 05 §7); null if it hasn't yet.
+   *  Part 07 §12's greeting carries the introduction while this is null. */
+  metAt: string | null;
 }
 
 export interface AuthResult {
@@ -390,7 +394,33 @@ export const api = {
   },
 
   /**
-   * Set the student's UI language (Part 07 §12). Asked after the level check,
+   * Speaks the greeting screen's text (Part 07 §12 step 2) — exactly the string
+   * already on screen, so what's said always matches what's shown. Returns a
+   * playable blob URL, or null when there's nothing to play: off-web (native
+   * has no `Blob`/`Audio` path here, matching `playNarration`'s own web-only
+   * gate), no TTS provider configured server-side, or the request itself
+   * failed. Every case is a silent skip, never a blocking error — a missing
+   * voice is a smaller harm than stalling a student at the door of their
+   * first lesson.
+   */
+  async getGreetingAudio(session: string, text: string): Promise<string | null> {
+    if (Platform.OS !== 'web') return null;
+    try {
+      const res = await fetch(`${API_URL}/me/greeting-audio`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return URL.createObjectURL(blob);
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Set the student's UI language (Part 07 §12). Asked as onboarding step 1,
    * so this is a separate call rather than part of sign-in. Returns the updated
    * user so the client doesn't have to guess what the server stored.
    */

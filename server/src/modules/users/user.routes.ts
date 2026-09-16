@@ -3,6 +3,7 @@ import type { AppDeps } from '../../deps.js';
 import { requireAuth } from '../../middleware/requireAuth.js';
 import { toUserDto } from './user.dto.js';
 import { greetingStage } from '../study-plan/greeting.js';
+import { narrate } from '../tts/narrate.js';
 import type { StudentProfile } from '../generation/persona.js';
 
 /** The get-to-know-you questions (Part 05 §7), in the order they're asked. */
@@ -94,6 +95,38 @@ export function userRoutes(deps: AppDeps): Router {
     const profile = readProfile(req.body);
     await deps.users.completeMeeting(req.telegramId!, profile, new Date().toISOString());
     res.json({ profile });
+  });
+
+  // Speaks the onboarding greeting screen's line(s) (Part 07 §12 step 2) — the
+  // greeting itself, plus Bixy's introduction for a first-time student. Text is
+  // exactly what the screen displays: the client owns that copy (chrome, not
+  // lesson content, same split as everywhere else in the app), including the
+  // student's own name, which the server has no template for. Capped at 500
+  // chars — comfortably more than the longest greeting+intro in any language —
+  // so an authed session can't turn this into an open-ended TTS relay; the
+  // remaining cost exposure is accepted the same way `/lessons` already accepts
+  // it for any authed student.
+  router.post('/greeting-audio', requireAuth(deps.session), async (req, res) => {
+    const text = (req.body as { text?: unknown })?.text;
+    if (typeof text !== 'string' || text.trim().length === 0) {
+      res.status(400).json({ error: 'text (string) is required' });
+      return;
+    }
+    if (!deps.tts.enabled) {
+      // No provider key configured — the client falls back to silent, same as
+      // a lesson beat with no audio_url. Not an error; just nothing to play.
+      res.status(404).json({ error: 'tts_unavailable' });
+      return;
+    }
+    const user = await deps.users.get(req.telegramId!);
+    try {
+      const result = await narrate(deps.tts, text.trim().slice(0, 500), user?.app_language ?? 'en');
+      res.set('Content-Type', 'audio/wav');
+      res.send(result.wav);
+    } catch (error) {
+      console.error('[tts] greeting audio failed:', (error as Error).message);
+      res.status(502).json({ error: 'tts_failed' });
+    }
   });
 
   return router;

@@ -101,13 +101,32 @@ export function PathBoardScreen({
   }, [phase === 'greeting']);
 
   // Part 05 §7: finishing OR skipping ends the meeting for good. The answers go
-  // up best-effort and the student moves straight on — the first lesson is what
-  // they came for, and it never waits on this.
+  // up best-effort — a lost answer set is a smaller harm than blocking a student
+  // at the door of their first lesson, which is why `postProfile` swallows its
+  // own failures.
+  //
+  // The phase then returns to 'greeting' on purpose. That is not a detour back
+  // through a screen already shown: it is the arrival prompt (§8.12) that the
+  // meeting displaced, and the greeting it re-fetches is the one the server
+  // withholds during `first_meeting` — `POST /me/greeting` deliberately does not
+  // stamp `last_greeted_at` for the meeting, so this call is what stamps it and
+  // makes the student's next visit today a "welcome back" instead of a second
+  // full greeting.
+  //
+  // What it must NOT do is race: that greeting call reads `met_at`, and
+  // `postProfile` is the write that sets it. Fired side by side (they were ~4ms
+  // apart in production) the read can beat the write, be told the meeting still
+  // hasn't happened, and drop the student straight back into the questions they
+  // just finished — which is exactly what the duplicated `/me/profile` +
+  // `/me/greeting` pairs in the logs were. Advancing only once the write has
+  // settled orders the two. A failed write settles too, so a student is never
+  // stranded on the last question; they just get asked again next visit.
   const finishMeeting = useCallback(
     (answers: MeetingAnswers) => {
-      api.postProfile(session, answers);
+      // Optimistic, so the prompt isn't blank for the round trip; the greeting
+      // effect overwrites it with whatever the server actually returns.
       setGreeting(t.greeting(name ?? ''));
-      setPhase('greeting');
+      void api.postProfile(session, answers).finally(() => setPhase('greeting'));
     },
     [session, name, t],
   );

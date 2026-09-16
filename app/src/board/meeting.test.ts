@@ -2,20 +2,18 @@ import { describe, expect, it } from 'vitest';
 import {
   MEETING_FIELDS,
   answerQuestion,
-  beginQuestions,
   currentField,
   initialMeeting,
   skipMeeting,
   skipQuestion,
 } from './meeting';
 
-const questions = beginQuestions(initialMeeting);
+const questions = initialMeeting;
 
 describe('first meeting (Part 05 §7)', () => {
-  it('opens with Bixy introducing itself, before any question', () => {
-    expect(initialMeeting.step).toBe('intro');
-    expect(currentField(initialMeeting)).toBeNull();
-    expect(currentField(questions)).toBe(MEETING_FIELDS[0]);
+  it('opens on the first question — the introduction moved to the greeting', () => {
+    expect(initialMeeting.step).toBe('question');
+    expect(currentField(initialMeeting)).toBe(MEETING_FIELDS[0]);
   });
 
   it('collects an answer and moves on', () => {
@@ -51,7 +49,7 @@ describe('first meeting (Part 05 §7)', () => {
     expect(done.answers).toEqual({ occupation: 'nurse' });
   });
 
-  it('can be skipped outright, from the introduction', () => {
+  it('can be skipped outright, from the very first question', () => {
     const done = skipMeeting(initialMeeting);
     expect(done.step).toBe('done');
     expect(done.answers).toEqual({});

@@ -4,18 +4,22 @@ import { asset, radius, space, surface, text, sky } from '../theme';
 import type { Lang } from '../i18n';
 
 /**
- * Language selection (Part 07 §12 step 3), shown **after** the level check.
+ * Language selection — now the **first** step of onboarding, ahead of the
+ * greeting and the level check (a reversal of §12's prose; see this part's build
+ * notes). Asking here is what lets the greeting be spoken in the student's own
+ * language.
  *
  * Two options, Uzbek and Russian — §12 words the question as "Which language is
- * convenient to learn English, Uzbek or Russian?" and a C1 placement skips this
- * screen entirely (English is assigned automatically, since C1 is the fully
- * English tier per Part 01 §1). The Figma frame offers English as a third row;
- * that contradicts both the question it's captioned with and the C1 rule, so the
- * two options in the prose are what's built and English stays the automatic
- * outcome rather than a pick.
+ * convenient to learn English, Uzbek or Russian?". English is still not a pick:
+ * it is what a C1 placement is assigned automatically, since C1 is the fully
+ * English tier (Part 01 §1). That now happens as an override *after* the level
+ * check rather than as a skipped question, because the tier isn't known this
+ * early. The Figma frame offers English as a third row; that contradicts both
+ * the question it's captioned with and the C1 rule, so the two options in the
+ * prose are what's built.
  *
- * The prompt is English for the same reason the greeting is: the student hasn't
- * chosen a language yet, so there is none to ask in.
+ * The prompt itself is English: this is the screen that *asks* which language to
+ * use, so there is nothing chosen yet to ask in.
  */
 const OPTIONS: Array<{ lang: Lang; title: string; subtitle: string; flag: string }> = [
   { lang: 'uz', title: 'O‘zbek tili', subtitle: 'Darslar o‘zbek tilida tushuntiriladi', flag: '🇺🇿' },

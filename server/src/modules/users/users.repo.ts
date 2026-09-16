@@ -37,8 +37,10 @@ export interface UsersRepo {
   /** Close the first meeting (Part 05 §7): store whatever the student answered
    *  and stamp `met_at`. Called for a skip too, with an empty profile. */
   completeMeeting(telegramId: string, profile: StudentProfile, iso: string): Promise<void>;
-  /** The student's chosen UI language (Part 07 §12) — set after the level check,
-   *  not at sign-in, so it can't be asked before the placement is known. */
+  /** The student's chosen UI language (Part 07 §12) — asked as onboarding step
+   *  1, before the greeting, so everything after it reads in that language. A
+   *  C1 placement later overrides it to English (Part 01 §1) via this same
+   *  setter, since the tier isn't known when the question is asked. */
   setAppLanguage(telegramId: string, language: string): Promise<void>;
 }
 

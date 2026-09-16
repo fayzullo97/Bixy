@@ -16,6 +16,7 @@
     },
     { "src": "/_expo/(.*)", "dest": "/app/_expo/$1" },
     { "src": "/assets/(.*)", "dest": "/app/assets/$1" },
+    { "src": "/home/(.*)", "dest": "/app/home/$1" },
     { "src": "/favicon.ico", "dest": "/app/favicon.ico" },
     { "src": "/(.*)", "dest": "/app/index.html" }
   ]

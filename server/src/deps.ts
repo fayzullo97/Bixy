@@ -8,6 +8,7 @@ import type { AssessmentService } from './modules/assessment/assessment.js';
 import type { LevelCheckRepo } from './modules/level-check/levelCheck.repo.js';
 import type { StudyPlanService } from './modules/study-plan/studyPlan.service.js';
 import type { LevelsService } from './modules/levels/levels.service.js';
+import type { TtsClient } from './modules/tts/client.js';
 
 /**
  * Everything the HTTP layer needs, injected at composition time. Real
@@ -28,6 +29,9 @@ export interface AppDeps {
   studyPlan: StudyPlanService;
   /** The level map behind the home screen's level card and screens (Part 07 §9). */
   levels: LevelsService;
+  /** Narration provider (§9.1), reused directly for the greeting's spoken
+   *  audio (Part 07 §12 step 2) — a single short synthesis, not a lesson. */
+  tts: TtsClient;
   /** DEV-ONLY: mount the Telegram-bypass sign-in route. Off in production. */
   allowDevLogin?: boolean;
 }

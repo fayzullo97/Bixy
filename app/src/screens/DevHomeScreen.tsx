@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { LevelDetail, LevelMap, LevelTopic } from '../api/client';
 import type { Level } from '../board/levelCheck';
+import type { Lang } from '../i18n';
 import { LEVELS } from '../board/levelCheck';
 import { HomeScreen } from './HomeScreen';
 import { AllLevelsScreen } from './AllLevelsScreen';
@@ -14,7 +15,7 @@ import { RevealResultScreen } from './RevealResultScreen';
  * (§12) wired to each other over fixed data, so each layout can be checked
  * without a session, a placement, or a seeded database.
  *
- * `?dev=home` walks the §12 order (greeting → language → reveal → home) so the
+ * `?dev=home` walks the built order (language → greeting → reveal → home) so the
  * whole flow can be clicked through; `screen=` jumps straight to one screen.
  */
 const TOPIC_IDS = [
@@ -60,15 +61,32 @@ export type DevHomeScreenName =
   | 'flow';
 
 export function DevHomeScreen({ screen = 'home' }: { screen?: DevHomeScreenName }) {
-  const [view, setView] = useState<DevHomeScreenName>(screen === 'flow' ? 'greeting' : screen);
+  const [view, setView] = useState<DevHomeScreenName>(screen === 'flow' ? 'language' : screen);
   const [level, setLevel] = useState<Level>('A1');
-
-  if (view === 'greeting') {
-    return <GreetingScreen name="Fayzullo" onContinue={() => setView('language')} />;
-  }
+  // The greeting reads in whatever the language step picked, same as the real flow.
+  const [lang, setLang] = useState<Lang>('en');
 
   if (view === 'language') {
-    return <LanguageSelectScreen onSelect={() => setView('reveal')} />;
+    return (
+      <LanguageSelectScreen
+        onSelect={(picked) => {
+          setLang(picked);
+          setView('greeting');
+        }}
+      />
+    );
+  }
+
+  if (view === 'greeting') {
+    return (
+      <GreetingScreen
+        name="Fayzullo"
+        language={lang}
+        firstMeeting
+        session={null}
+        onContinue={() => setView('reveal')}
+      />
+    );
   }
 
   if (view === 'reveal') {
