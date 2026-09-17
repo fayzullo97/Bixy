@@ -7,6 +7,7 @@ import { SignedInApp } from './src/screens/SignedInApp';
 import { DevBoardScreen } from './src/screens/DevBoardScreen';
 import { DevLevelCheckScreen } from './src/screens/DevLevelCheckScreen';
 import { DevBixyScreen } from './src/screens/DevBixyScreen';
+import { DevNarrationSpeedScreen } from './src/screens/DevNarrationSpeedScreen';
 import { DevHomeScreen, type DevHomeScreenName } from './src/screens/DevHomeScreen';
 import { FullscreenFrame } from './src/telegram/FullscreenFrame';
 import { BoardHost } from './src/board/BoardHost';
@@ -89,6 +90,14 @@ function devHomeParams(): { screen: DevHomeScreenName } | null {
   return { screen: known.includes(screen as DevHomeScreenName) ? (screen as DevHomeScreenName) : 'home' };
 }
 
+// DEV-ONLY: `?dev=speed` previews narration at different playback rates so the
+// right speed can be chosen by ear (Part 02 §3 pacing). Read-only — it changes
+// no default, it only plays a clip at a rate you pick.
+function devSpeedEnabled(): boolean {
+  if (!devRoutesEnabled() || typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('dev') === 'speed';
+}
+
 function devBixyParams(): { anger: number } | null {
   if (!devRoutesEnabled() || typeof window === 'undefined') return null;
   const params = new URLSearchParams(window.location.search);
@@ -119,6 +128,14 @@ export default function App() {
       <View style={styles.devHomeRoot}>
         <StatusBar style="dark" />
         <DevHomeScreen screen={home.screen} />
+      </View>
+    );
+  }
+  if (devSpeedEnabled()) {
+    return (
+      <View style={styles.devRoot}>
+        <StatusBar style="light" />
+        <DevNarrationSpeedScreen />
       </View>
     );
   }

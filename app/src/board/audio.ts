@@ -5,13 +5,35 @@ import { Platform } from 'react-native';
  * drives story-beat pacing). Web target only in v1; on native (or if autoplay is
  * blocked / the file errors) it falls back to calling `onEnd` so playback still
  * advances. Returns a cancel function that stops the audio.
+ *
+ * `rate` multiplies playback speed (1 = as synthesized). It is the no-regen
+ * speed lever — see `DevNarrationSpeedScreen` for previewing values by ear.
+ * Note the reported `onTime` position is the audio element's own clock, which
+ * already runs at the adjusted rate, so subtitle sync needs no scaling.
  */
-export function playNarration(url: string, onEnd: () => void, onTime?: (ms: number) => void): () => void {
+export function playNarration(
+  url: string,
+  onEnd: () => void,
+  onTime?: (ms: number) => void,
+  rate?: number,
+): () => void {
   if (Platform.OS !== 'web' || typeof Audio === 'undefined') {
     onEnd();
     return () => {};
   }
   const audio = new Audio(url);
+  // Client-side speed (Part 02 §3 pacing). `playbackRate` is applied post-hoc to
+  // already-rendered audio, so it needs no regeneration and no cache
+  // invalidation — the trade-off is that it resamples rather than re-voicing, so
+  // it shifts delivery rather than re-performing the line. `preservesPitch`
+  // keeps it from turning into a chipmunk; it's prefixed on older Safari.
+  if (rate && rate > 0 && rate !== 1) {
+    const withPitch = audio as HTMLAudioElement & { preservesPitch?: boolean; mozPreservesPitch?: boolean; webkitPreservesPitch?: boolean };
+    withPitch.preservesPitch = true;
+    withPitch.mozPreservesPitch = true;
+    withPitch.webkitPreservesPitch = true;
+    audio.playbackRate = rate;
+  }
   // Subtitle sync reads position on every frame (Part 02 §3). `timeupdate` fires
   // only ~4×/s, which the eye reads as the window stuttering behind the voice.
   let raf = 0;
