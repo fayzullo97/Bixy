@@ -172,7 +172,7 @@ export const strings: Record<Lang, Strings> = {
       'Bu ilova Telegram ichida ishlaydi. O‘rganishni boshlash uchun uni Telegramdagi botdan oching.',
     signingIn: 'Tizimga kiritilmoqda…',
     greeting: (name) => `Salom, ${name} 👋`,
-    greetingGeneric: "Salom, men Bixy — doskada ingliz tili grammatikasini o'rgataman.",
+    greetingGeneric: "Salom, Men Bixyman, sizga Ingiliz tili gramatikasini o'rgataman",
     bixyIntro:
       'Men Bixy. Doskada ingliz tili grammatikasini o‘rgataman: mavzuni yozib, chizib va gapirib tushuntiraman, siz esa istagan payt to‘xtatib, qayta so‘rashingiz mumkin.',
     greetingContinue: 'Davom etish uchun bosing',
