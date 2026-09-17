@@ -1,0 +1,278 @@
+{
+  "host": "https://wgwmtycezhulyqzenqvm.supabase.co",
+  "user": [
+    {
+      "telegram_id": "112224486",
+      "name": "Fayzullo",
+      "username": "dev",
+      "photo_url": null,
+      "app_language": "en",
+      "created_at": "2026-09-05T10:14:02.263306+00:00",
+      "updated_at": "2026-09-16T18:11:26.745+00:00",
+      "last_greeted_at": "2026-09-16T18:11:26.745+00:00",
+      "met_at": "2026-09-16T18:11:24.33+00:00",
+      "student_profile": {}
+    }
+  ],
+  "seen": [
+    {
+      "question_id": "adverbs_of_frequency",
+      "seen_at": "2026-09-16T16:32:47.747+00:00",
+      "level_check_questions": {
+        "id": "adverbs_of_frequency",
+        "level": "A1",
+        "prompt": "He ___ (always / check) his email in the morning.",
+        "topic_id": "adverbs_of_frequency"
+      }
+    },
+    {
+      "question_id": "a_an_meaning_per",
+      "seen_at": "2026-09-16T16:33:25.22+00:00",
+      "level_check_questions": {
+        "id": "a_an_meaning_per",
+        "level": "B1",
+        "prompt": "She earns $30 ___ hour.",
+        "topic_id": "a_an_meaning_per"
+      }
+    },
+    {
+      "question_id": "ed_participle_clauses",
+      "seen_at": "2026-09-16T16:33:31.208+00:00",
+      "level_check_questions": {
+        "id": "ed_participle_clauses",
+        "level": "C1",
+        "prompt": "___ (write) in the 1800s, the novel remains popular today.",
+        "topic_id": "ed_participle_clauses"
+      }
+    },
+    {
+      "question_id": "each_others_one_anothers",
+      "seen_at": "2026-09-16T16:34:02.823+00:00",
+      "level_check_questions": {
+        "id": "each_others_one_anothers",
+        "level": "B2",
+        "prompt": "The dancers borrowed ___ costumes. (each other)",
+        "topic_id": "each_others_one_anothers"
+      }
+    },
+    {
+      "question_id": "generic_one_you_we",
+      "seen_at": "2026-09-16T16:34:21.743+00:00",
+      "level_check_questions": {
+        "id": "generic_one_you_we",
+        "level": "B2",
+        "prompt": "___ never know what tomorrow will bring.",
+        "topic_id": "generic_one_you_we"
+      }
+    },
+    {
+      "question_id": "having_past_participle_clauses",
+      "seen_at": "2026-09-16T16:34:28.439+00:00",
+      "level_check_questions": {
+        "id": "having_past_participle_clauses",
+        "level": "C1",
+        "prompt": "___ (miss) the deadline, he apologized to the client.",
+        "topic_id": "having_past_participle_clauses"
+      }
+    },
+    {
+      "question_id": "ing_participle_clauses",
+      "seen_at": "2026-09-16T16:34:57.565+00:00",
+      "level_check_questions": {
+        "id": "ing_participle_clauses",
+        "level": "C1",
+        "prompt": "___ (feel) exhausted, she decided to cancel the trip.",
+        "topic_id": "ing_participle_clauses"
+      }
+    }
+  ],
+  "placement": [
+    {
+      "telegram_id": "112224486",
+      "level": "C1",
+      "updated_at": "2026-09-16T16:35:11.854+00:00"
+    }
+  ],
+  "bankCounts": [
+    {
+      "level": "A1"
+    },
+    {
+      "level": "A1"
+    },
+    {
+      "level": "A1"
+    },
+    {
+      "level": "A1"
+    },
+    {
+      "level": "A1"
+    },
+    {
+      "level": "A1"
+    },
+    {
+      "level": "A1"
+    },
+    {
+      "level": "A1"
+    },
+    {
+      "level": "A1"
+    },
+    {
+      "level": "A1"
+    },
+    {
+      "level": "A2"
+    },
+    {
+      "level": "A2"
+    },
+    {
+      "level": "A2"
+    },
+    {
+      "level": "A2"
+    },
+    {
+      "level": "A2"
+    },
+    {
+      "level": "A2"
+    },
+    {
+      "level": "A2"
+    },
+    {
+      "level": "A2"
+    },
+    {
+      "level": "A2"
+    },
+    {
+      "level": "A2"
+    },
+    {
+      "level": "B1"
+    },
+    {
+      "level": "B1"
+    },
+    {
+      "level": "B1"
+    },
+    {
+      "level": "B1"
+    },
+    {
+      "level": "B1"
+    },
+    {
+      "level": "B1"
+    },
+    {
+      "level": "B1"
+    },
+    {
+      "level": "B1"
+    },
+    {
+      "level": "B1"
+    },
+    {
+      "level": "B1"
+    },
+    {
+      "level": "B1+"
+    },
+    {
+      "level": "B1+"
+    },
+    {
+      "level": "B1+"
+    },
+    {
+      "level": "B1+"
+    },
+    {
+      "level": "B1+"
+    },
+    {
+      "level": "B1+"
+    },
+    {
+      "level": "B1+"
+    },
+    {
+      "level": "B1+"
+    },
+    {
+      "level": "B1+"
+    },
+    {
+      "level": "B1+"
+    },
+    {
+      "level": "B2"
+    },
+    {
+      "level": "B2"
+    },
+    {
+      "level": "B2"
+    },
+    {
+      "level": "B2"
+    },
+    {
+      "level": "B2"
+    },
+    {
+      "level": "B2"
+    },
+    {
+      "level": "B2"
+    },
+    {
+      "level": "B2"
+    },
+    {
+      "level": "B2"
+    },
+    {
+      "level": "B2"
+    },
+    {
+      "level": "C1"
+    },
+    {
+      "level": "C1"
+    },
+    {
+      "level": "C1"
+    },
+    {
+      "level": "C1"
+    },
+    {
+      "level": "C1"
+    },
+    {
+      "level": "C1"
+    },
+    {
+      "level": "C1"
+    },
+    {
+      "level": "C1"
+    },
+    {
+      "level": "C1"
+    },
+    {
+      "level": "C1"
+    }
+  ]
+}
