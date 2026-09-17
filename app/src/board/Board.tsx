@@ -7,7 +7,7 @@ import { FormalText } from './FormalText';
 import { NoteCard, QuizQuestionCard, type QuizAnswer } from './Quiz';
 import { beatDurationMs } from './pacing';
 import { clipUrls, playSequence } from './audio';
-import { subtitleWindow } from './subtitle';
+import { subtitleChunk } from './subtitle';
 import { pickReTeachVariant } from './variants';
 import { decideMastery } from './mastery';
 import { pickScoreReaction } from './scoreReaction';
@@ -616,16 +616,18 @@ function ConfirmCard({
 }
 
 /**
- * The narration caption (Part 02 §3). With word timings it rolls a fixed-size
- * window in step with the audio, highlighting the word being spoken; without
- * them it falls back to the unit's full text, which is the v1 behaviour Uzbek
- * lessons keep until Whisper alignment is validated for Aisha audio.
+ * The narration caption (Part 02 §3). With word timings it shows one discrete
+ * chunk of ~5–7 words at a time — the chunk is held until every word in it has
+ * been spoken, then swapped whole for the next — and highlights the word being
+ * spoken within it. Without timings it falls back to the unit's full text, which
+ * is the v1 behaviour Uzbek lessons keep until Whisper alignment is validated
+ * for Aisha audio.
  */
 function Subtitle({ unit, positionMs }: { unit: SpokenUnit; positionMs: number }) {
   const timed = unit.words && unit.words.length > 0 ? unit.words : null;
   if (!timed) return <Text style={styles.subtitle}>{unit.text}</Text>;
 
-  const { words, activeIndex } = subtitleWindow(timed, positionMs);
+  const { words, activeIndex } = subtitleChunk(timed, positionMs);
   return (
     <Text style={styles.subtitle}>
       {words.map((w, i) => (

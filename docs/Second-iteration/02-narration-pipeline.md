@@ -46,10 +46,41 @@ confirmed plain spelling reads naturally on Aisha. Source phrase bank
   English narration both need it, since Part 01's C1 gate means even
   English-narrated lessons need their own bank, not just ru).
 
-**Chunked subtitles** replace the current full-text display with a rolling
-**7-word window** synced to actual audio playback, so the visible words stay
-ahead of where Bixy is currently speaking rather than dumping the whole
-sentence at once.
+**Chunked subtitles** replace the current full-text display with word-timed
+groups synced to actual audio playback, rather than dumping the whole sentence
+at once.
+
+**Deliberate amendment (testing pass) — discrete chunks, not a rolling
+window.** This section originally specified a rolling **7-word window**: the
+visible words stayed ahead of the voice, with one word leaving the left edge as
+one entered the right and the spoken word held near the start. That is what was
+built (`subtitleWindow`) and it worked as written — this is a change of
+intent, not a bug fix.
+
+- **What changed:** narration words are now split into fixed groups of ~5–7
+  (`SUBTITLE_CHUNK_SIZE = 6`). A whole group is held on screen until every word
+  in it has been spoken, then the entire group is swapped for the next one in a
+  single step. There is no continuous horizontal movement at any point.
+- **Why:** the per-word slide reads as constant drift. Text that never stops
+  moving is hard to actually read, and the "stay ahead of the voice" benefit was
+  bought at the cost of the line never being still. Holding a group still for its
+  whole duration is more readable than keeping the spoken word centred.
+- **What did NOT change:** the word-level highlight still tracks the voice inside
+  the held group, so the student can still see exactly where Bixy is. Only the
+  *paging* is discrete. Sync source (Whisper + LCS reconciliation), per-unit
+  granularity, the story-track-only scope, and the proportional-timing fallback
+  are all untouched.
+- **Chunk sizing:** the group count is chosen by rounding `words / 6`, then words
+  are dealt evenly across that count. Rounding rather than `ceil` keeps groups
+  near the target instead of collapsing to the minimum (13 words → 7+6, where
+  `ceil` would give 5+4+4), and dealing evenly stops the remainder piling up as a
+  one-word orphan at the end. No group ever exceeds 7. The 5-word floor holds
+  from 10 words up; below that two groups of five don't fit, so a unit of 8 pages
+  as 4+4.
+- Implemented as `chunkWords` / `subtitleChunk` in `app/src/board/subtitle.ts`,
+  replacing `subtitleWindow`; covered by `app/src/board/subtitle.test.ts`,
+  including an explicit test that the chunk is identical at every position inside
+  its own span and swaps whole at the boundary.
 - Sync source: neither TTS engine returns timestamps natively. Generated
   audio is passed through `whisper-1` with `timestamp_granularities: ["word"]`
   to get real word-level timing. **Correction:** an earlier version of this
