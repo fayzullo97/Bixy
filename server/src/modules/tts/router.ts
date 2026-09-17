@@ -1,5 +1,6 @@
 import type { TtsClient } from './client.js';
 import type { Language } from '../generation/systemPrompt.js';
+import { applyTtsPronunciation } from './pronunciation.js';
 
 /**
  * Language-routed TTS (Part 01 §2). v1 ran every language through one provider;
@@ -24,7 +25,10 @@ export function createTtsRouter(byLanguage: Record<Language, TtsClient>): TtsCli
       if (!client.enabled) {
         throw new Error(`TTS: the provider for "${language}" is missing its API key`);
       }
-      return client.synthesize(text, language);
+      // Per-language pronunciation fixes are applied HERE, at the one point every
+      // provider call funnels through, so no display surface can pick them up and
+      // no provider client has to know about them (see pronunciation.ts).
+      return client.synthesize(applyTtsPronunciation(text, language), language);
     },
   };
 }
