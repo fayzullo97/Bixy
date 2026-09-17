@@ -52,7 +52,7 @@ export const GREETING_VARIANTS: Record<Language, GreetingVariant[]> = {
     { id: 'en-6', text: "Hi, I'm Bixy — let's do some English grammar." },
   ],
   uz: [
-    { id: 'uz-8', text: "Salom, Men Bixyman, sizga Ingiliz tili gramatikasini o'rgataman" },
+    { id: 'uz-9', text: "Salom, Men Bixyman, sizga Ingliz tili grammatikasini o'rgataman" },
     { id: 'uz-5', text: "Salom, men Bixy, ingliz tili grammatikasi bo'yicha ustozingiz." },
     { id: 'uz-6', text: "Assalomu alaykum, men Bixy — keling, grammatikani birga o'rganamiz." },
   ],
