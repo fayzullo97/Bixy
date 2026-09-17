@@ -12,13 +12,36 @@ export const LANGUAGE_LABELS: Record<Lang, string> = {
 interface Strings {
   tagline: string;
   chooseLanguage: string;
-  loginWithTelegram: string;
   devLogin: string;
-  loginUnavailable: string;
+  // Shown when the app is opened outside Telegram (§8.8 Mini App).
+  openInTelegramTitle: string;
+  openInTelegramBody: string;
+  signingIn: string;
   greeting: (name: string) => string;
+  /** The arrival screen's spoken line (Part 07 §12 step 2). Name-free and
+   *  self-introducing, because it is served as a PRE-GENERATED clip — see the
+   *  server's `greetingClips.ts`. Used only as the fallback when that request
+   *  fails; normally the server sends the exact text of the clip it picked. */
+  greetingGeneric: string;
+  /** Bixy's one-time self-introduction (Part 05 §7). Shown with the greeting
+   *  (Part 07 §12 step 2) while the student has no `met_at` — it used to open
+   *  the board's get-to-know-you, which now starts at the first question. */
+  bixyIntro: string;
+  /** Tap-anywhere hint under the greeting. */
+  greetingContinue: string;
   boardPlaceholder: string;
   signOut: string;
   loading: string;
+  // The first meeting (Part 05 §7) — now the get-to-know-you conversation only:
+  // the introduction moved to the greeting (Part 07 §12). `meetOffer` leads the
+  // first question; the five questions are each individually skippable.
+  meetOffer: string;
+  meetSkipAll: string;
+  meetSkip: string;
+  meetNext: string;
+  meetDone: string;
+  meetPlaceholder: string;
+  meetQuestions: Record<'occupation' | 'study_place' | 'hobbies' | 'interests' | 'motivation', string>;
   // Study plan & dashboard (§8.12).
   welcomeBack: (name: string) => string;
   dashboardStat: (completed: number, total: number, level: string) => string;
@@ -31,13 +54,29 @@ interface Strings {
   levelPlaced: (level: string) => string;
   toYourPlan: string;
   generatingLesson: string;
+  // Home screen & navigation (Part 07 §9).
+  homeTitle: string;
+  homeLevelLabel: (level: string) => string;
+  homeLevelHint: string;
+  homeContinue: string;
+  homeCardCurrent: string;
+  homeCardPassed: string;
+  homeCardUpcoming: string;
+  allLevelsTitle: string;
+  back: string;
+  topicLocked: string;
+  levelTopicCount: (completed: number, total: number) => string;
+  comingSoon: string;
+  /** The reveal headline (Part 07 §12): "Your level is" + the tier name. */
+  revealLead: string;
+  /** Tap-anywhere hint on the reveal screen, once its entrance animation settles. */
+  revealContinue: string;
   // Failure handling (§8.10).
   offline: string;
   lessonTimeoutFailed: string;
   lessonFailed: string;
   noContent: string;
   tryAgain: string;
-  loginCancelled: string;
   loginFailed: string;
   planLoadFailed: string;
   // The single input (§8.5).
@@ -57,14 +96,32 @@ export const strings: Record<Lang, Strings> = {
   en: {
     tagline: 'Learn English grammar on a live whiteboard.',
     chooseLanguage: 'Choose your language',
-    loginWithTelegram: 'Log in with Telegram',
     devLogin: 'Dev sign-in (local only)',
-    loginUnavailable:
-      'Telegram login isn’t available yet — the app URL still needs to be registered with BotFather.',
+    openInTelegramTitle: 'Open this app in Telegram',
+    openInTelegramBody:
+      'This app runs inside Telegram. Open it from the bot in Telegram to start learning.',
+    signingIn: 'Signing you in…',
     greeting: (name) => `Hi, ${name} 👋`,
+    greetingGeneric: "Hi, I'm Bixy — I teach English grammar on a board.",
+    bixyIntro:
+      'I’m Bixy. I teach English grammar on a board: I’ll write, draw and talk you through a topic, and you can stop me any time to ask about it again.',
+    greetingContinue: 'Tap to continue',
     boardPlaceholder: 'Your whiteboard will appear here.',
     signOut: 'Sign out',
     loading: 'Loading…',
+    meetOffer: 'Before we start, tell me a little about yourself — so I can explain things in a way that fits you.',
+    meetSkipAll: 'Skip for now',
+    meetSkip: 'Skip',
+    meetNext: 'Next',
+    meetDone: 'Done',
+    meetPlaceholder: 'Type your answer…',
+    meetQuestions: {
+      occupation: 'What do you do — work, study, something else?',
+      study_place: 'Where do you usually study?',
+      hobbies: 'What do you do for fun?',
+      interests: 'Anything you’re really into at the moment?',
+      motivation: 'And why are you learning English?',
+    },
     welcomeBack: (name) => `Welcome back, ${name} 👋`,
     dashboardStat: (completed, total, level) => `${completed} of ${total} ${level} topics done`,
     dashboardStart: 'Continue on the board',
@@ -76,12 +133,25 @@ export const strings: Record<Lang, Strings> = {
     levelPlaced: (level) => `You’re placed at ${level}.`,
     toYourPlan: 'Go to your plan',
     generatingLesson: 'Preparing your lesson…',
+    homeTitle: 'General English',
+    homeLevelLabel: (level) => `${level} level`,
+    homeLevelHint: 'Click to see the map of all topics',
+    homeContinue: 'Tap to continue',
+    homeCardCurrent: 'Current topic',
+    homeCardPassed: 'Passed',
+    homeCardUpcoming: 'Upcoming',
+    allLevelsTitle: 'All levels',
+    back: 'Back',
+    topicLocked: 'Pass the current topic to open this one.',
+    levelTopicCount: (completed, total) => `${completed} of ${total} topics done`,
+    comingSoon: 'Coming soon',
+    revealLead: 'Your level is',
+    revealContinue: 'Tap to continue',
     offline: 'You’re offline. Reconnect and reload to continue.',
     lessonTimeoutFailed: 'Your lesson is taking too long to load. Please try again.',
     lessonFailed: 'Something went wrong preparing your lesson. Please try again.',
     noContent: 'I don’t have a lesson for that yet. Please try again.',
     tryAgain: 'Try again',
-    loginCancelled: 'Sign-in was cancelled. Please try again.',
     loginFailed: 'Couldn’t sign you in. Please try again.',
     planLoadFailed: 'Couldn’t load your plan. Please try again.',
     inputPlaceholder: 'Ask for a topic, or about this lesson…',
@@ -96,14 +166,32 @@ export const strings: Record<Lang, Strings> = {
   uz: {
     tagline: 'Ingliz tili grammatikasini jonli doskada o‘rganing.',
     chooseLanguage: 'Tilni tanlang',
-    loginWithTelegram: 'Telegram orqali kirish',
     devLogin: 'Dev kirish (faqat lokal)',
-    loginUnavailable:
-      'Telegram orqali kirish hozircha mavjud emas — ilova manzili BotFatherda ro‘yxatdan o‘tishi kerak.',
+    openInTelegramTitle: 'Ilovani Telegramda oching',
+    openInTelegramBody:
+      'Bu ilova Telegram ichida ishlaydi. O‘rganishni boshlash uchun uni Telegramdagi botdan oching.',
+    signingIn: 'Tizimga kiritilmoqda…',
     greeting: (name) => `Salom, ${name} 👋`,
+    greetingGeneric: "Salom, Men Bixyman, sizga Ingiliz tili gramatikasini o'rgataman",
+    bixyIntro:
+      'Men Bixy. Doskada ingliz tili grammatikasini o‘rgataman: mavzuni yozib, chizib va gapirib tushuntiraman, siz esa istagan payt to‘xtatib, qayta so‘rashingiz mumkin.',
+    greetingContinue: 'Davom etish uchun bosing',
     boardPlaceholder: 'Doskangiz shu yerda paydo bo‘ladi.',
     signOut: 'Chiqish',
     loading: 'Yuklanmoqda…',
+    meetOffer: 'Boshlashdan oldin o‘zingiz haqingizda biroz aytib bering — tushuntirishlarimni sizga moslashtiraman.',
+    meetSkipAll: 'Hozircha o‘tkazib yuborish',
+    meetSkip: 'O‘tkazib yuborish',
+    meetNext: 'Keyingisi',
+    meetDone: 'Tayyor',
+    meetPlaceholder: 'Javobingizni yozing…',
+    meetQuestions: {
+      occupation: 'Nima bilan shug‘ullanasiz — ishlaysizmi, o‘qiysizmi?',
+      study_place: 'Odatda qayerda shug‘ullanasiz?',
+      hobbies: 'Bo‘sh vaqtingizda nima qilasiz?',
+      interests: 'Hozir sizni nima juda qiziqtiryapti?',
+      motivation: 'Ingliz tilini nima uchun o‘rganyapsiz?',
+    },
     welcomeBack: (name) => `Xush kelibsiz, ${name} 👋`,
     dashboardStat: (completed, total, level) => `${level} darajasida ${total} tadan ${completed} ta mavzu tugallandi`,
     dashboardStart: 'Doskada davom etish',
@@ -115,12 +203,25 @@ export const strings: Record<Lang, Strings> = {
     levelPlaced: (level) => `Siz ${level} darajasiga joylashtirildingiz.`,
     toYourPlan: 'Rejangizga o‘tish',
     generatingLesson: 'Darsingiz tayyorlanmoqda…',
+    homeTitle: 'Umumiy ingliz tili',
+    homeLevelLabel: (level) => `${level} daraja`,
+    homeLevelHint: 'Barcha mavzular xaritasini ko‘rish uchun bosing',
+    homeContinue: 'Davom etish uchun bosing',
+    homeCardCurrent: 'Joriy mavzu',
+    homeCardPassed: 'O‘tilgan',
+    homeCardUpcoming: 'Keyingi',
+    allLevelsTitle: 'Barcha darajalar',
+    back: 'Orqaga',
+    topicLocked: 'Buni ochish uchun joriy mavzuni tugating.',
+    levelTopicCount: (completed, total) => `${total} mavzudan ${completed} tasi tugallandi`,
+    comingSoon: 'Tez orada',
+    revealLead: 'Sizning darajangiz',
+    revealContinue: 'Davom etish uchun bosing',
     offline: 'Internet aloqasi yo‘q. Davom etish uchun qayta ulanib, sahifani yangilang.',
     lessonTimeoutFailed: 'Darsni yuklash juda uzoq davom etmoqda. Iltimos, qayta urinib ko‘ring.',
     lessonFailed: 'Darsni tayyorlashda xatolik yuz berdi. Iltimos, qayta urinib ko‘ring.',
     noContent: 'Bu bo‘yicha hozircha darsim yo‘q. Iltimos, qayta urinib ko‘ring.',
     tryAgain: 'Qayta urinib ko‘rish',
-    loginCancelled: 'Kirish bekor qilindi. Iltimos, qayta urinib ko‘ring.',
     loginFailed: 'Kirib bo‘lmadi. Iltimos, qayta urinib ko‘ring.',
     planLoadFailed: 'Rejangizni yuklab bo‘lmadi. Iltimos, qayta urinib ko‘ring.',
     inputPlaceholder: 'Mavzu so‘rang yoki shu dars haqida so‘rang…',
@@ -135,14 +236,32 @@ export const strings: Record<Lang, Strings> = {
   ru: {
     tagline: 'Изучайте английскую грамматику на живой доске.',
     chooseLanguage: 'Выберите язык',
-    loginWithTelegram: 'Войти через Telegram',
     devLogin: 'Dev-вход (только локально)',
-    loginUnavailable:
-      'Вход через Telegram пока недоступен — URL приложения нужно зарегистрировать в BotFather.',
+    openInTelegramTitle: 'Откройте приложение в Telegram',
+    openInTelegramBody:
+      'Это приложение работает внутри Telegram. Откройте его через бота в Telegram, чтобы начать.',
+    signingIn: 'Выполняется вход…',
     greeting: (name) => `Привет, ${name} 👋`,
+    greetingGeneric: 'Привет, я Бикси — объясняю английскую грамматику на доске.',
+    bixyIntro:
+      'Я Бикси. Я объясняю английскую грамматику на доске: пишу, рисую и рассказываю, а вы в любой момент можете остановить меня и спросить ещё раз.',
+    greetingContinue: 'Нажмите, чтобы продолжить',
     boardPlaceholder: 'Здесь появится ваша доска.',
     signOut: 'Выйти',
     loading: 'Загрузка…',
+    meetOffer: 'Прежде чем начать, расскажите немного о себе — так я смогу объяснять понятнее именно для вас.',
+    meetSkipAll: 'Пропустить пока',
+    meetSkip: 'Пропустить',
+    meetNext: 'Дальше',
+    meetDone: 'Готово',
+    meetPlaceholder: 'Напишите ответ…',
+    meetQuestions: {
+      occupation: 'Чем вы занимаетесь — работаете, учитесь?',
+      study_place: 'Где вы обычно занимаетесь?',
+      hobbies: 'Чем любите заниматься в свободное время?',
+      interests: 'Что вас сейчас особенно увлекает?',
+      motivation: 'И почему вы учите английский?',
+    },
     welcomeBack: (name) => `С возвращением, ${name} 👋`,
     dashboardStat: (completed, total, level) => `Пройдено ${completed} из ${total} тем уровня ${level}`,
     dashboardStart: 'Продолжить на доске',
@@ -154,12 +273,25 @@ export const strings: Record<Lang, Strings> = {
     levelPlaced: (level) => `Ваш уровень — ${level}.`,
     toYourPlan: 'К вашему плану',
     generatingLesson: 'Готовим ваш урок…',
+    homeTitle: 'Общий английский',
+    homeLevelLabel: (level) => `Уровень ${level}`,
+    homeLevelHint: 'Нажмите, чтобы увидеть карту всех тем',
+    homeContinue: 'Нажмите, чтобы продолжить',
+    homeCardCurrent: 'Текущая тема',
+    homeCardPassed: 'Пройдено',
+    homeCardUpcoming: 'Впереди',
+    allLevelsTitle: 'Все уровни',
+    back: 'Назад',
+    topicLocked: 'Пройдите текущую тему, чтобы открыть эту.',
+    levelTopicCount: (completed, total) => `${completed} из ${total} тем пройдено`,
+    comingSoon: 'Скоро',
+    revealLead: 'Ваш уровень',
+    revealContinue: 'Нажмите, чтобы продолжить',
     offline: 'Нет подключения к интернету. Переподключитесь и перезагрузите страницу, чтобы продолжить.',
     lessonTimeoutFailed: 'Урок загружается слишком долго. Пожалуйста, попробуйте ещё раз.',
     lessonFailed: 'При подготовке урока произошла ошибка. Пожалуйста, попробуйте ещё раз.',
     noContent: 'У меня пока нет урока по этой теме. Пожалуйста, попробуйте ещё раз.',
     tryAgain: 'Попробовать снова',
-    loginCancelled: 'Вход отменён. Пожалуйста, попробуйте ещё раз.',
     loginFailed: 'Не удалось выполнить вход. Пожалуйста, попробуйте ещё раз.',
     planLoadFailed: 'Не удалось загрузить ваш план. Пожалуйста, попробуйте ещё раз.',
     inputPlaceholder: 'Спросите тему или задайте вопрос об уроке…',

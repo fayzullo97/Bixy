@@ -3,10 +3,10 @@ import { SignJWT, jwtVerify } from 'jose';
 const SESSION_ISSUER = 'whiteboard-ai-tutor';
 
 /**
- * Our own first-party session, minted once we've validated Telegram's id_token.
- * We do NOT reuse Telegram's short-lived id_token as the session — we exchange it
- * for a longer-lived token of our own so a signed-in student stays signed in
- * across reloads (§8.8) without re-hitting Telegram every visit.
+ * Our own first-party session, minted once we've validated Telegram's initData.
+ * We do NOT reuse Telegram's initData as the session — we exchange it for a
+ * longer-lived token of our own so a signed-in student stays signed in across
+ * reloads (§8.8) without re-verifying the Mini App context every visit.
  *
  * The session is a stateless HS256 JWT keyed off the Telegram user id. Trade-off
  * for v1: sign-out is a client-side token discard; there is no server-side

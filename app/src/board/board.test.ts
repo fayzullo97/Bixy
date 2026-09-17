@@ -84,7 +84,7 @@ describe('quiz validation (§8.4)', () => {
 
 describe('beatDurationMs', () => {
   it('stays within bounds and grows with text length', () => {
-    const short = beatDurationMs({ id: 1, type: 'formal_beat', style: 'title', content: 'Hi' });
+    const short = beatDurationMs({ id: 1, type: 'formal_beat', style: 'title', term: 'Hi' });
     const long = beatDurationMs({ id: 2, type: 'story_beat', narration: 'x'.repeat(200), doodles: [] });
     expect(short).toBeGreaterThanOrEqual(1800);
     expect(long).toBeLessThanOrEqual(9000);

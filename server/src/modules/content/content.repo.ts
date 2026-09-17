@@ -33,6 +33,12 @@ export interface TopicCatalogEntry {
   level: string;
 }
 
+/** A topic row a level screen needs: the plan fields plus the one line of prose
+ *  its subtitle is derived from (Part 07 §9). */
+export interface LevelTopicRow extends PlanTopicRow {
+  key_idea: string | null;
+}
+
 /** A topic row the study plan needs: id, tier, and authored order (§8.12). */
 export interface PlanTopicRow {
   topic_id: string;
@@ -49,6 +55,7 @@ export interface ContentRepo {
   getTopic(topicId: string): Promise<TopicOutline | null>;
   listTopicsCompact(): Promise<TopicCatalogEntry[]>;
   listTopicsForPlan(): Promise<PlanTopicRow[]>;
+  listTopicsForLevel(level: string): Promise<LevelTopicRow[]>;
 }
 
 export function supabaseContentRepo(db: SupabaseClient): ContentRepo {
@@ -132,6 +139,16 @@ export function supabaseContentRepo(db: SupabaseClient): ContentRepo {
         .order('sort_order', { nullsFirst: false });
       if (error) throw error;
       return (data as PlanTopicRow[]) ?? [];
+    },
+
+    async listTopicsForLevel(level) {
+      const { data, error } = await db
+        .from('topics')
+        .select('topic_id, level, sort_order, key_idea')
+        .eq('level', level)
+        .order('sort_order', { nullsFirst: false });
+      if (error) throw error;
+      return (data as LevelTopicRow[]) ?? [];
     },
   };
 }

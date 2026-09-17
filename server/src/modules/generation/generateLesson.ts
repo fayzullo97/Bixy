@@ -42,11 +42,11 @@ export function parseJsonLoose(text: string): unknown {
  */
 export async function generateLesson(
   deps: GenerateDeps,
-  input: { topic: TopicOutline; language: Language },
+  input: { topic: TopicOutline; language: Language; persona?: string },
 ): Promise<{ script: BoardScript; attempts: number }> {
   const system = buildSystemPrompt(deps.doodles);
   const knownElementIds = new Set(deps.doodles.map((d) => d.id));
-  const userPrompt = buildUserPrompt(input.topic, input.language);
+  const userPrompt = buildUserPrompt(input.topic, input.language, input.persona);
 
   let correction = '';
   let lastError: unknown;
@@ -75,6 +75,9 @@ export async function generateLesson(
       // Tolerant reader, strict writer: a generated lesson MUST ship its quiz, so
       // a missing one is a generation miss we retry rather than a lesson we serve.
       if (!script.quiz) throw new Error('missing required `quiz` array (§8.4)');
+      // Spoken hand-off into the test (Part 02 §5). It has no client-side
+      // fallback by design, so a missing one is a generation miss, not a gap.
+      if (!script.quiz_intro) throw new Error('missing required `quiz_intro` line (Part 02 §5)');
       // Not just "valid JSON": the narration must actually be in the requested
       // language and the board text in English (§8.7) before we accept it.
       const langIssue = scriptLanguageIssue(script, input.language);

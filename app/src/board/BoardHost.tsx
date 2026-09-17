@@ -16,6 +16,9 @@ import { FONT_REGULAR } from './fonts';
 export function BoardHost({
   seekTo,
   showSubtitles,
+  initialRetestRound,
+  onRequestRetest,
+  detour,
   script: providedScript,
   resumeFromBeatId,
   appendSegment,
@@ -24,6 +27,9 @@ export function BoardHost({
 }: {
   seekTo?: number;
   showSubtitles?: boolean;
+  initialRetestRound?: number;
+  onRequestRetest?: () => Promise<QuizQuestion[]>;
+  detour?: { requestWrapUp: () => Promise<QuizQuestion | null>; onComplete: () => void };
   /** A generated script to play; when omitted, the static §8.2 sample is used. */
   script?: BoardScript;
   /** Resume playback from this saved `last_completed_beat` (§8.9/§9.1). */
@@ -80,6 +86,9 @@ export function BoardHost({
       catalog={catalog}
       seekTo={seekTo}
       showSubtitles={showSubtitles}
+      initialRetestRound={initialRetestRound}
+      onRequestRetest={onRequestRetest}
+      detour={detour}
       resumeFromBeatId={resumeFromBeatId}
       appendSegment={appendSegment}
       gradeFillIn={gradeFillIn}

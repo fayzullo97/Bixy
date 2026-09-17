@@ -5,11 +5,10 @@ import {
   type Beat,
   type BoardScript,
   type CheckInBeat,
-  type ContentFormalBeat,
-  type ContentStyle,
   type DoodleRef,
   type QuizQuestion,
   type QuizQuestionType,
+  type SpokenUnit,
   type StoryBeat,
 } from './types';
 
@@ -20,6 +19,50 @@ function fail(where: string, message: string): never {
 function str(value: unknown, where: string, field: string): string {
   if (typeof value !== 'string' || value.trim() === '') fail(where, `\`${field}\` must be a non-empty string`);
   return value;
+}
+
+const LANGUAGES = new Set(['en', 'uz', 'ru']);
+
+/**
+ * Reads the TTS step's `speech` array. Tolerant: this is server-filled, never
+ * model output, and a clip whose synthesis failed simply has no `audio_url` —
+ * the board then falls back to its timer for that unit rather than stalling.
+ */
+function parseSpeech(raw: unknown, where: string): SpokenUnit[] | undefined {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw)) fail(where, '`speech` must be an array');
+  return raw.map((u, i) => {
+    const at = `${where}.speech[${i}]`;
+    if (typeof u !== 'object' || u === null) fail(at, 'must be an object');
+    const o = u as Record<string, unknown>;
+    if (!LANGUAGES.has(o.language as string)) fail(at, '`language` must be en|uz|ru');
+    const nums = (raw: unknown, keys: string[]) =>
+      Array.isArray(raw)
+        ? raw.filter(
+            (x): x is Record<string, unknown> =>
+              typeof x === 'object' && x !== null && keys.every((k) => typeof (x as Record<string, unknown>)[k] === 'number'),
+          )
+        : undefined;
+    return {
+      text: str(o.text, at, 'text'),
+      language: o.language as SpokenUnit['language'],
+      audio_url: typeof o.audio_url === 'string' ? o.audio_url : undefined,
+      // Timing arrays are server-derived, never model output — a malformed entry
+      // is dropped so the board falls back to full-text rather than failing.
+      sentences: nums(o.sentences, ['duration_ms', 'start_ms']) as SpokenUnit['sentences'],
+      duration_ms: typeof o.duration_ms === 'number' ? o.duration_ms : undefined,
+      words: nums(o.words, ['start_ms', 'end_ms']) as SpokenUnit['words'],
+    };
+  });
+}
+
+/** Flavour text (Part 04 §6) — tolerant, since the board falls back to plain
+ *  wording rather than failing a lesson over a malformed phrasing list. */
+function parseScoreReactions(raw: unknown): BoardScript['score_reactions'] {
+  const tier = (value: unknown): string[] =>
+    Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string' && v.trim() !== '') : [];
+  const r = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
+  return { reteach_all: tier(r.reteach_all), reteach_missed: tier(r.reteach_missed) };
 }
 
 const POSITIONS = new Set(['left', 'center', 'right']);
@@ -59,7 +102,7 @@ function parseBeat(raw: unknown, index: number, knownElementIds?: Set<string>): 
       type: 'story_beat',
       narration: str(r.narration, where, 'narration'),
       doodles: r.doodles.map((d, i) => parseDoodleRef(d, `${where}.doodles[${i}]`, knownElementIds)),
-      audio_url: typeof r.audio_url === 'string' ? r.audio_url : undefined,
+      speech: parseSpeech(r.speech, where),
     };
     return beat;
   }
@@ -75,6 +118,7 @@ function parseBeat(raw: unknown, index: number, knownElementIds?: Set<string>): 
       const beat: CheckInBeat = {
         id: r.id,
         type: 'formal_beat',
+        speech: parseSpeech(r.speech, where),
         style: 'check_in_question',
         question: str(r.question, where, 'question'),
         options: r.options as string[],
@@ -87,14 +131,56 @@ function parseBeat(raw: unknown, index: number, knownElementIds?: Set<string>): 
     if (!(CONTENT_STYLES as string[]).includes(r.style as string)) {
       fail(where, `unknown formal style ${JSON.stringify(r.style)}`);
     }
-    const beat: ContentFormalBeat = {
-      id: r.id,
-      type: 'formal_beat',
-      style: r.style as ContentStyle,
-      content: str(r.content, where, 'content'),
-      emphasis: r.emphasis !== undefined ? str(r.emphasis, where, 'emphasis') : undefined,
-    };
-    return beat;
+
+    // One shape per style (Part 01 §1). Each style's required fields are
+    // enforced; anything extra is dropped, since the shapes are built explicitly.
+    const optional = (field: string) => (r[field] !== undefined ? str(r[field], where, field) : undefined);
+    const speech = parseSpeech(r.speech, where);
+
+    switch (r.style) {
+      case 'title':
+        return { id: r.id, type: 'formal_beat', speech, style: 'title', term: str(r.term, where, 'term') };
+      case 'formula':
+        return {
+          id: r.id,
+          type: 'formal_beat',
+          speech,
+          style: 'formula',
+          formula: str(r.formula, where, 'formula'),
+          note: optional('note'),
+        };
+      case 'explanation':
+        return { id: r.id, type: 'formal_beat', speech, style: 'explanation', note: str(r.note, where, 'note') };
+      case 'example':
+        return {
+          id: r.id,
+          type: 'formal_beat',
+          speech,
+          style: 'example',
+          sentence: str(r.sentence, where, 'sentence'),
+          note: optional('note'),
+        };
+      case 'recap_example':
+        return {
+          id: r.id,
+          type: 'formal_beat',
+          speech,
+          style: 'recap_example',
+          sentence: str(r.sentence, where, 'sentence'),
+          emphasis: optional('emphasis'),
+          note: optional('note'),
+        };
+      default:
+        return {
+          id: r.id,
+          type: 'formal_beat',
+          speech,
+          style: 'common_mistake',
+          wrong: str(r.wrong, where, 'wrong'),
+          correct: str(r.correct, where, 'correct'),
+          note: str(r.note, where, 'note'),
+        };
+    }
   }
 
   return fail(where, `unknown beat type ${JSON.stringify(r.type)}`);
@@ -174,5 +260,10 @@ export function parseBoardScript(raw: unknown, knownElementIds?: Set<string>): B
     level: str(r.level, '', 'level'),
     beats,
     ...(r.quiz !== undefined ? { quiz: parseQuiz(r.quiz, beatIds) } : {}),
+    ...(r.quiz_intro !== undefined ? { quiz_intro: str(r.quiz_intro, '', 'quiz_intro') } : {}),
+    ...(r.quiz_intro_speech !== undefined
+      ? { quiz_intro_speech: parseSpeech(r.quiz_intro_speech, 'quiz_intro') }
+      : {}),
+    ...(r.score_reactions !== undefined ? { score_reactions: parseScoreReactions(r.score_reactions) } : {}),
   };
 }

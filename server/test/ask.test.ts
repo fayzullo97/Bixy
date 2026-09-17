@@ -21,7 +21,7 @@ const topic: TopicOutline = {
 const reexplainOut = JSON.stringify({
   beats: [
     { id: 1, type: 'story_beat', narration: 'Keling, buni boshqacha qilib, yana bir bor birga koraylik hozir.', doodles: [] },
-    { id: 2, type: 'formal_beat', style: 'explanation', content: 'have + past participle' },
+    { id: 2, type: 'formal_beat', style: 'explanation', note: 'have + past participle' },
   ],
 });
 
@@ -54,6 +54,7 @@ function fakeContent(): ContentRepo {
       { topic_id: 'past_simple_tense', level: 'A2' },
     ],
     listTopicsForPlan: async () => [],
+    listTopicsForLevel: async () => [],
   };
 }
 
@@ -63,7 +64,21 @@ function seededCache(): LessonCacheRepo {
   return {
     get: async (t) =>
       known.has(t)
-        ? ({ topic_id: t, level: 'B1', beats: [{ id: 1, type: 'formal_beat', style: 'title', content: 'T' }] } as BoardScript)
+        ? ({
+            topic_id: t,
+            level: 'B1',
+            // Carries its synthesized `speech`, or narrationComplete treats the
+            // row as degraded and regenerates it (Part 02 §5).
+            beats: [
+              {
+                id: 1,
+                type: 'formal_beat',
+                style: 'title',
+                term: 'T',
+                speech: [{ text: 'T', language: 'en', audio_url: 'https://cdn.test/t.wav' }],
+              },
+            ],
+          } as BoardScript)
         : null,
     put: async () => {},
   };
@@ -119,20 +134,22 @@ describe('generateReexplanation', () => {
   });
 });
 
+// Every typed message now passes the identity classifier first (Part 05 §8), so
+// the scripted replies below lead with its NO.
 describe('pipeline.ask routing (§8.5)', () => {
   it('a typed different topic is a detour lesson', async () => {
-    const { client, calls } = mockAnthropic([]); // direct slug match — no model call
+    const { client, calls } = mockAnthropic(['NO']); // then a direct slug match — no resolver call
     const res = await service(client).ask({
       text: 'past simple tense',
       language: 'uz',
       currentTopicId: 'present_perfect_tense',
     });
     expect(res).toMatchObject({ kind: 'lesson', topicId: 'past_simple_tense' });
-    expect(calls).toHaveLength(0);
+    expect(calls).toHaveLength(1);
   });
 
   it('a typed question matching no topic, mid-lesson, is a re-explanation', async () => {
-    const { client } = mockAnthropic(['NONE', reexplainOut]);
+    const { client } = mockAnthropic(['NO', 'NONE', reexplainOut]);
     const res = await service(client).ask({
       text: 'explain the timeline part again',
       language: 'uz',
@@ -142,7 +159,7 @@ describe('pipeline.ask routing (§8.5)', () => {
   });
 
   it('the same topic as the current lesson is a re-explanation, not a reset', async () => {
-    const { client } = mockAnthropic([reexplainOut]); // direct slug match, then reexplain
+    const { client } = mockAnthropic(['NO', reexplainOut]); // direct slug match, then reexplain
     const res = await service(client).ask({
       text: 'present perfect tense',
       language: 'uz',
@@ -152,7 +169,7 @@ describe('pipeline.ask routing (§8.5)', () => {
   });
 
   it('an off-topic request with no current lesson is no_content', async () => {
-    const { client } = mockAnthropic(['NONE']);
+    const { client } = mockAnthropic(['NO', 'NONE']);
     const res = await service(client).ask({ text: 'how to bake bread', language: 'uz', currentTopicId: null });
     expect(res).toEqual({ kind: 'no_content' });
   });

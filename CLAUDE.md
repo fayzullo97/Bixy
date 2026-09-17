@@ -2,7 +2,7 @@
 
 This file loads automatically at the start of every Claude Code session.
 Keep it short — it's a persistent reminder, not the spec. Full detail for
-whatever you're building lives in docs/phase-N-*.md.
+whatever you're building lives in docs/Second-iteration/NN-*.md.
 
 ## What this is
 ## 1. Overview
@@ -37,9 +37,11 @@ No mainstream product currently combines "explains visually, like a whiteboard t
 - Modular monolith: one Node.js backend, clean internal module boundaries — not microservices.
 - Client: React Native + Expo (react-native-web for the web target now; native iOS/Android later reuse ~60-80% of this code).
 - Database: Supabase (Postgres).
-- Full architecture detail: docs/phase-*.md as relevant, and PRD.md §9.
+- Full architecture detail: docs/First-iteration/phase-*.md as relevant, and PRD.md §9.
 
 ## Working agreement
-- Build one phase (docs/phase-N-*.md) per session. Don't try to implement multiple phases in one continuous session — context degrades before you'd finish.
-- Each phase file is self-contained: schema, requirements, and the "why" for its area. Read only the phase you're building, not the whole PRD, unless you need to cross-check something specific.
+- v1 shipped from docs/First-iteration/phase-N-*.md (8 phases, historical record). Iteration 2 builds from docs/Second-iteration/NN-*.md — read 00-context-shipped-v1.md first, then only the part you're building.
+- Build one part per session. Don't try to implement multiple parts in one continuous session — context degrades before you'd finish.
+- Each part file is self-contained: schema, requirements, and the "why" for its area. Read only the part you're building, not the whole PRD, unless you need to cross-check something specific.
+- Migrations are applied BY HAND — paste server/src/db/migrations/*.sql into the Supabase SQL editor. `npm run migrate` can't run (no SUPABASE_DB_URL).
 - The full PRD.md stays in the repo as the canonical reference for anything a phase file doesn't cover in enough detail.

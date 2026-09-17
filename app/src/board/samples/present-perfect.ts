@@ -9,7 +9,7 @@ export const presentPerfectSample: BoardScript = {
   topic_id: 'present_perfect',
   level: 'A2',
   beats: [
-    { id: 1, type: 'formal_beat', style: 'title', content: 'Present Perfect' },
+    { id: 1, type: 'formal_beat', style: 'title', term: 'Present Perfect' },
     {
       id: 2,
       type: 'story_beat',
@@ -47,8 +47,8 @@ export const presentPerfectSample: BoardScript = {
         { element_id: 'speech_bubble', attached_to: 'person_b', text: "I've been to Bukhara myself!" },
       ],
     },
-    { id: 6, type: 'formal_beat', style: 'recap_example', content: 'I have visited Samarkand.', emphasis: 'have' },
-    { id: 7, type: 'formal_beat', style: 'recap_example', content: 'I have been to Bukhara.', emphasis: 'have' },
+    { id: 6, type: 'formal_beat', style: 'recap_example', sentence: 'I have visited Samarkand.', emphasis: 'have' },
+    { id: 7, type: 'formal_beat', style: 'recap_example', sentence: 'I have been to Bukhara.', emphasis: 'have' },
     {
       id: 8,
       type: 'formal_beat',
@@ -60,9 +60,22 @@ export const presentPerfectSample: BoardScript = {
         '0': "That's simple past — it works, but it ties the action to a finished, specific time. Diana and Marcus were both talking about it as something that still matters right now, which needs 'have' or 'has' plus the past participle instead.",
       },
     },
-    { id: 9, type: 'formal_beat', style: 'formula', content: 'have / has + past participle' },
-    { id: 10, type: 'formal_beat', style: 'example', content: 'I have visited Samarkand.' },
-    { id: 11, type: 'formal_beat', style: 'common_mistake', content: 'I have visit Samarkand.' },
+    {
+      id: 9,
+      type: 'formal_beat',
+      style: 'formula',
+      formula: 'have / has + past participle',
+      note: 'The participle never changes, no matter who did it.',
+    },
+    { id: 10, type: 'formal_beat', style: 'example', sentence: 'I have visited Samarkand.' },
+    {
+      id: 11,
+      type: 'formal_beat',
+      style: 'common_mistake',
+      wrong: 'I have visit Samarkand.',
+      correct: 'I have visited Samarkand.',
+      note: 'After have or has, the verb takes its past participle form — not the plain one.',
+    },
     {
       id: 12,
       type: 'formal_beat',
@@ -75,6 +88,7 @@ export const presentPerfectSample: BoardScript = {
       },
     },
   ],
+  quiz_intro: "Okay — let's see how much of that stuck.",
   quiz: [
     {
       quiz_question_id: 1,

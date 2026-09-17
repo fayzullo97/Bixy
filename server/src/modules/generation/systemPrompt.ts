@@ -1,5 +1,6 @@
 import type { DoodleCatalogEntry, TopicOutline } from '../content/content.repo.js';
 import { QUIZ_MAX, QUIZ_MIN } from './boardScript.js';
+import { fillerGuidance } from './fillerWords.js';
 
 export type Language = 'en' | 'uz' | 'ru';
 
@@ -37,21 +38,37 @@ A lesson is two parallel tracks:
 Follow this arc (what fills each part varies by topic — don't pad):
 1. Introduction — a short \`story_beat\` that frames WHY this topic matters (a situation the student would actually care about) before any rule is stated, and previews the approach.
 2. Discovery — 2 to 4 \`story_beat\`s (scale with how hard the topic is), continuing ONE scene, giving enough repetition to notice a pattern.
-3. Recap — one \`recap_example\` formal_beat per discovery beat, writing the discovery sentences out, with the grammar marker in \`emphasis\`.
+3. Recap — one \`recap_example\` formal_beat per discovery beat, writing the discovery sentences out in \`sentence\`, with the grammar marker in \`emphasis\`.
 4. Check — a \`check_in_question\` on the discovery content.
-5. Confirm the rule — \`formula\`, then an \`example\`, then a \`common_mistake\` (formal_beats).
+5. Confirm the rule — \`formula\`, then an \`example\`, then a \`common_mistake\` (formal_beats). The common_mistake carries BOTH sides: the incorrect sentence in \`wrong\` and its fixed version in \`correct\`, with your explanation of why in \`note\`.
 6. Check — a second \`check_in_question\`, this time on the formula.
-7. End-of-topic test — a \`quiz\` array (see below), after every beat is covered.
+7. End-of-topic test — the separate top-level \`quiz\` array described below, covering what the beats taught. It is NOT a beat: \`beats\` ends with the last formal_beat, and no quiz question ever appears inside it.
+8. \`quiz_intro\` — one short spoken line handing the student over to that test, in your voice (e.g. "Okay, let's see how much of this stuck."). One or two sentences, warm and low-pressure, never listing what the test contains. It is read aloud, so write it to be heard rather than read.
+9. \`score_reactions\` — what you say when the student does NOT pass, so the board can react in your voice instead of a canned string. Two lists of 3 phrasings each:
+   { "reteach_all": [string, string, string], "reteach_missed": [string, string, string] }
+   - Each phrasing MUST contain the literal token \`{score}\` where the percentage goes.
+   - \`reteach_all\` is for a low score, where you'll go through the whole topic again — e.g. "Hmm, {score}% — that one didn't land yet. Let's take the whole thing from the top."
+   - \`reteach_missed\` is for a near miss, where you'll only revisit the parts they got wrong — e.g. "{score}% — close! Just a couple of bits to tidy up."
+   - Warm and matter-of-fact, never harsh and never falsely upbeat. The student has just failed; name it plainly and move on. Vary the three phrasings genuinely — they exist so a student who fails twice doesn't hear the same sentence.
+
+# This lesson is spoken
+Every line you write except the end-of-topic test is read aloud to the student: the story narration, and now the written board content too — title, formula, explanation, examples, and both halves of a common_mistake pair. Check-in stems are read; their options are not. Write board text that survives being heard as well as seen — a formula like "have / has + past participle" is fine, but don't write bare symbols or punctuation that only makes sense on screen.
 
 # Pacing
 Each beat must be full enough to actually explain its point, not just label it — a story_beat carries a real explanation or a step of the scenario, not a one-line caption. Give the discovery scene enough repetition that the pattern is genuinely noticeable before the recap names it.
 
 # Beat shapes (exact)
 - story_beat: { "id": int, "type": "story_beat", "narration": string, "doodles": [ { "element_id": string, "position"?: "left"|"center"|"right", "attached_to"?: string, "text"?: string } ] }
-- formal_beat (content): { "id": int, "type": "formal_beat", "style": "title"|"formula"|"explanation"|"example"|"common_mistake"|"recap_example", "content": string, "emphasis"?: string }
+- formal_beat (content). \`type\` is ALWAYS the literal string "formal_beat" — never a style name. The \`style\` field selects which other fields the beat carries, and those fields are NOT interchangeable between styles. One of exactly these six shapes:
+  { "id": int, "type": "formal_beat", "style": "title", "term": string }
+  { "id": int, "type": "formal_beat", "style": "formula", "formula": string, "note"?: string }
+  { "id": int, "type": "formal_beat", "style": "explanation", "note": string }
+  { "id": int, "type": "formal_beat", "style": "example", "sentence": string, "note"?: string }
+  { "id": int, "type": "formal_beat", "style": "recap_example", "sentence": string, "emphasis"?: string, "note"?: string }
+  { "id": int, "type": "formal_beat", "style": "common_mistake", "wrong": string, "correct": string, "note": string }
 - formal_beat (check-in): { "id": int, "type": "formal_beat", "style": "check_in_question", "question": string, "options": [string, ...], "correct_index": int, "wrong_answer_reactions": { "<option index>": string } }
 
-Top level: { "topic_id": string, "level": string, "beats": [ ... ], "quiz": [ ... ] }. Ids are 1-based and sequential. Start with a \`title\` formal_beat.
+Top level: { "topic_id": string, "level": string, "beats": [ ... ], "quiz": [ ... ], "quiz_intro": string, "score_reactions": { ... } }. Ids are 1-based and sequential. Start with a \`title\` formal_beat.
 
 # The end-of-topic test (quiz)
 After the beats, add a \`quiz\` array — the graded end-of-topic test (§8.4). ${QUIZ_MIN}–${QUIZ_MAX} questions, the count scaling with topic complexity the same way discovery-beat count does (fewer for a simple topic, more for a hard one). Blend all three types — never multiple choice alone:
@@ -60,13 +77,31 @@ After the beats, add a \`quiz\` array — the graded end-of-topic test (§8.4). 
 - fill_in_the_blank: { "quiz_question_id": int, "type": "fill_in_the_blank", "question": string, "accepted_answers": [string, ...], "tests_beat_id": int }
 
 Quiz rules:
+- The quiz lives ONLY in the top-level \`quiz\` array. Never also repeat these questions as entries in \`beats\` — that is a duplicate, not a lesson.
 - Every question MUST test something actually taught in the beats above — never test content the lesson didn't cover.
 - \`tests_beat_id\` MUST be the \`id\` of the specific beat the question checks. Spread coverage across the lesson's beats, not all on one.
 - \`fill_in_the_blank\` "accepted_answers" lists every reasonable correct form (contractions, valid alternate phrasings) — a typed answer is graded against this list first.
 - quiz_question_id is 1-based and sequential.
 
 # Language (critical)
-The ONLY field written in the student's narration language is each story_beat "narration" (the spoken track). EVERYTHING else is English: title, formula, explanation, example, common_mistake, recap content and emphasis, speech/thought bubble "text", every check_in_question "question" and its "options", AND every quiz "question", "options", and "accepted_answers". Even when the narration is Uzbek or Russian, all of these stay in English — this is the target-language content the student is learning, so never translate it.
+Two languages appear in a board script, and EVERY field belongs to exactly one of them. Never blend them inside a single string.
+
+ALWAYS ENGLISH — the actual material being taught or tested, whatever the narration language:
+- \`term\`, \`formula\`, \`sentence\`, \`emphasis\`, \`wrong\`, \`correct\`
+- every check_in_question \`question\` and its \`options\`
+- every quiz \`question\`, \`options\`, and \`accepted_answers\`
+- every doodle \`text\` (speech/thought bubble dialogue) — the characters are DEMONSTRATING the grammar by speaking it, so the bubble is the English sentence being taught. Never translate a bubble.
+
+ALWAYS THE STUDENT'S LANGUAGE — your own wording about that material:
+- every story_beat \`narration\`
+- every \`note\`
+- every \`wrong_answer_reactions\` value
+- \`quiz_intro\`
+- every \`score_reactions\` phrasing
+
+These student-language fields SHOULD still use the English grammar term when naming the concept ("Present Perfect") — that word is terminology, not prose, and stays English inside a translated sentence. What they must NOT do is restate the English example sentences: those already have their own fields (\`sentence\`, \`wrong\`, \`correct\`), so refer to what's on the board rather than quoting it again.
+
+This split is validated mechanically, field by field. A translated \`sentence\`, or a \`note\` left in English when the student's language is not English, is a rejected generation.
 
 # Rules
 - \`doodles[].element_id\` MUST be one of the catalog ids below — never invent artwork. Build a continuous scene: give people a \`position\`, and attach faces / speech_bubble / thought_bubble / objects to a person via \`attached_to\` (the person's element_id). Bubble \`text\` is plain, casual story dialogue.
@@ -78,14 +113,24 @@ The ONLY field written in the student's narration language is each story_beat "n
 ${catalog}`;
 }
 
-/** The per-request user message: the one target topic to teach + the narration language. */
-export function buildUserPrompt(topic: TopicOutline, language: Language): string {
+/**
+ * The per-request user message: the one target topic to teach + the narration
+ * language, plus anything that varies per STUDENT (Part 05 §8).
+ *
+ * The persona fragment belongs here and nowhere else: the system block above is
+ * one byte-identical cached string shared across every request, so it
+ * structurally cannot carry a per-student instruction. A lesson generated with a
+ * fragment is also not cacheable — see `serveLesson`.
+ */
+export function buildUserPrompt(topic: TopicOutline, language: Language, persona = ''): string {
   return `Generate the board script for this topic.
 
-Narration language: ${LANGUAGE_NAMES[language]} (${language}). ONLY the story_beat "narration" is in this language — say it idiomatically in your persona's tone, not a literal translation, keeping any English grammar words and example phrases in correct English. Everything WRITTEN on the board — including every check-in question and its options — stays in English.
+Student's language: ${LANGUAGE_NAMES[language]} (${language}). Write every story_beat "narration", every "note", every "wrong_answer_reactions" value, "quiz_intro", and every "score_reactions" phrasing in this language — idiomatically, in your persona's tone, not as a literal translation. Keep English grammar terminology (e.g. "Present Perfect") in English inside those sentences.
+
+Every English-locked field — "term", "formula", "sentence", "emphasis", "wrong", "correct", every doodle "text", every check-in "question" and its "options", and every quiz "question", "options" and "accepted_answers" — stays in English regardless.
 
 Reference outline (your grounding — do not drift from it):
 ${JSON.stringify(topic, null, 2)}
 
-Use "${topic.topic_id}" as the top-level topic_id and "${topic.level}" as the level. Output only the JSON board script.`;
+Use "${topic.topic_id}" as the top-level topic_id and "${topic.level}" as the level. Output only the JSON board script.${fillerGuidance(language)}${persona ? `\n\n# This student\n${persona}` : ''}`;
 }

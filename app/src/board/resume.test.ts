@@ -3,7 +3,7 @@ import { buildResumeState } from './resume';
 import type { Beat } from './types';
 
 const beats: Beat[] = [
-  { id: 1, type: 'formal_beat', style: 'title', content: 'Present Perfect' },
+  { id: 1, type: 'formal_beat', style: 'title', term: 'Present Perfect' },
   { id: 2, type: 'story_beat', narration: 'A story.', doodles: [] },
   { id: 3, type: 'story_beat', narration: 'More story.', doodles: [] },
   {
@@ -14,7 +14,7 @@ const beats: Beat[] = [
     options: ['a', 'b'],
     correct_index: 1,
   },
-  { id: 5, type: 'formal_beat', style: 'formula', content: 'have/has + pp' },
+  { id: 5, type: 'formal_beat', style: 'formula', formula: 'have/has + pp' },
 ];
 
 describe('buildResumeState', () => {

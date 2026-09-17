@@ -6,7 +6,7 @@ import type { BoardScript } from './types';
 const script: BoardScript = {
   topic_id: 'past_simple',
   level: 'A2',
-  beats: [{ id: 1, type: 'formal_beat', style: 'title', content: 'Past Simple' }],
+  beats: [{ id: 1, type: 'formal_beat', style: 'title', term: 'Past Simple' }],
 };
 
 describe('decideAsk (§8.5/§8.12)', () => {
@@ -23,6 +23,11 @@ describe('decideAsk (§8.5/§8.12)', () => {
   it('routes a re-explanation to an append', () => {
     const res: AskResult = { kind: 'reexplain', beats: script.beats };
     expect(decideAsk(res, 'past_simple')).toEqual({ action: 'reexplain', beats: script.beats });
+  });
+
+  it('answers an identity question without touching the board (Part 05 §8)', () => {
+    const d = decideAsk({ kind: 'identity', text: 'Not a person — but I am here.' }, 'present_perfect');
+    expect(d).toEqual({ action: 'identity', text: 'Not a person — but I am here.' });
   });
 
   it('routes no_content to off_topic', () => {

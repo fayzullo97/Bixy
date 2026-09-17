@@ -10,10 +10,10 @@ function isAppLanguage(value: unknown): value is AppLanguage {
 }
 
 /**
- * DEV-ONLY sign-in. Skips Telegram id_token validation entirely and mints a
+ * DEV-ONLY sign-in. Skips Telegram initData validation entirely and mints a
  * session for a fake identity. It exists so the app can be run and verified
- * locally before the production URL is registered with BotFather — real Telegram
- * login cannot complete until that registration exists.
+ * locally in a plain browser — real Mini App login only works when the app is
+ * opened from inside Telegram (which injects the signed initData).
  *
  * Only mounted when ALLOW_DEV_LOGIN is on, which env.ts force-disables when
  * NODE_ENV === 'production'. This must never be reachable in a deployed app.

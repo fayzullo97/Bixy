@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { QuizQuestion } from './types';
 import { FONT_BOLD, FONT_REGULAR, FONT_SEMIBOLD } from './fonts';
@@ -45,6 +45,25 @@ export function QuizQuestionCard({
   const [text, setText] = useState('');
   const [grading, setGrading] = useState(false);
   const answered = answer !== undefined;
+  const inputRef = useRef<TextInput | null>(null);
+
+  /**
+   * Nudges the focused input above the on-screen keyboard (web only — this
+   * board runs on react-native-web even inside Telegram's in-app browser,
+   * which has no native `KeyboardAvoidingView` support; a mobile browser only
+   * auto-scrolls its OWN document scroller on focus, never a custom `ScrollView`
+   * like the board's, so the input stays hidden under the keyboard otherwise).
+   * RN Web forwards a host component's ref to its underlying DOM node, which is
+   * a real `<input>` and so supports `scrollIntoView` directly; native builds
+   * have no such method on `TextInput`, so this is a no-op there and the
+   * platform's own keyboard handling applies. Deferred one frame because the
+   * keyboard is still animating in the instant `focus` fires — scrolling before
+   * then measures against the pre-resize layout.
+   */
+  const scrollInputIntoView = () => {
+    const node = inputRef.current as unknown as { scrollIntoView?: (opts?: ScrollIntoViewOptions) => void };
+    setTimeout(() => node.scrollIntoView?.({ behavior: 'smooth', block: 'center' }), 50);
+  };
 
   const submitText = async () => {
     if (grading || !text.trim()) return;
@@ -76,6 +95,7 @@ export function QuizQuestionCard({
           ) : (
             <>
               <TextInput
+                ref={inputRef}
                 style={styles.input}
                 value={text}
                 onChangeText={setText}
@@ -85,6 +105,7 @@ export function QuizQuestionCard({
                 autoCapitalize="none"
                 autoCorrect={false}
                 onSubmitEditing={submitText}
+                onFocus={scrollInputIntoView}
                 returnKeyType="done"
               />
               <Pressable

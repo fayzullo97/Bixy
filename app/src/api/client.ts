@@ -1,5 +1,6 @@
+import { Platform } from 'react-native';
 import type { Lang } from '../i18n';
-import type { BoardScript } from '../board/types';
+import type { BoardScript, QuizQuestion } from '../board/types';
 
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -25,6 +26,9 @@ export interface UserDto {
   username: string | null;
   photoUrl: string | null;
   appLanguage: Lang;
+  /** When Bixy first introduced itself (Part 05 §7); null if it hasn't yet.
+   *  Part 07 §12's greeting carries the introduction while this is null. */
+  metAt: string | null;
 }
 
 export interface AuthResult {
@@ -56,7 +60,51 @@ export interface StudyPlan {
   stats: LevelStats;
 }
 
-export type GreetingVariant = 'full' | 'short';
+/** A topic's state on the level map (Part 07 §9). Only `passed`, `current` and
+ *  `started` are openable — `locked` sits past the path's frontier. */
+export type TopicStatus = 'passed' | 'started' | 'current' | 'locked';
+
+/** A tier's state in the All Levels grid (Part 07 §9). */
+export type LevelStatus = 'completed' | 'in_progress' | 'not_started';
+
+export interface LevelSummary {
+  level: string;
+  status: LevelStatus;
+  completed: number;
+  total: number;
+}
+
+/** The All Levels grid (Part 07 §9). */
+export interface LevelMap {
+  levels: LevelSummary[];
+  placement: string | null;
+}
+
+export interface LevelTopic {
+  topic_id: string;
+  status: TopicStatus;
+  key_idea: string | null;
+}
+
+/** One level's screen (Part 07 §9); `scroll_to` is non-null only for the
+ *  student's own current level. */
+export interface LevelDetail {
+  level: string;
+  topics: LevelTopic[];
+  scroll_to: number | null;
+}
+
+/** The arrival stage (§8.12, Part 05 §7). `first_meeting` fires once, ever. */
+export type GreetingVariant = 'full' | 'short' | 'first_meeting';
+
+/** What the student told Bixy when they met (Part 05 §7) — all optional. */
+export interface StudentProfile {
+  occupation?: string;
+  study_place?: string;
+  hobbies?: string;
+  interests?: string;
+  motivation?: string;
+}
 
 /** One topic's saved progress (§8.9) — drives mid-lesson resume (§9.1). */
 export interface ProgressRecord {
@@ -65,6 +113,9 @@ export interface ProgressRecord {
   quiz_score: number | null;
   last_completed_beat: number | null;
   mastered: boolean;
+  /** Part 04 §6 — retests already failed, and what was missed last time. */
+  retest_round?: number;
+  missed_fingerprints?: string[];
 }
 
 /** What a submitted input (§8.5) resolved to: a full lesson (a detour to a new
@@ -72,6 +123,8 @@ export interface ProgressRecord {
 export type AskResult =
   | { kind: 'lesson'; topic_id: string; board_script: BoardScript; cached: boolean }
   | { kind: 'reexplain'; beats: BoardScript['beats'] }
+  /** "Are you real?", answered in character (Part 05 §8). */
+  | { kind: 'identity'; text: string }
   | { kind: 'no_content' };
 
 async function postJson<T>(path: string, body: unknown, session?: string): Promise<T> {
@@ -87,6 +140,15 @@ async function postJson<T>(path: string, body: unknown, session?: string): Promi
   return (await res.json()) as T;
 }
 
+/** The greeting screen's line and its pre-generated audio (Part 07 §12 step 2).
+ *  `text` is what the screen shows AND what the clip says — one source, so the
+ *  two cannot drift. */
+export interface GreetingClip {
+  variant_id: string;
+  text: string;
+  audio_url: string;
+}
+
 export const api = {
   /** Restore a persisted session on load (§8.8). */
   async me(session: string): Promise<UserDto> {
@@ -97,8 +159,16 @@ export const api = {
     return ((await res.json()) as { user: UserDto }).user;
   },
 
-  telegramLogin(idToken: string, appLanguage: Lang): Promise<AuthResult> {
-    return postJson<AuthResult>('/auth/telegram', { id_token: idToken, app_language: appLanguage });
+  /**
+   * Exchange a verified Telegram Mini App `initData` string for a session (§8.8).
+   * `appLanguage` is optional — when omitted the server derives it from the
+   * Telegram user's language_code (or keeps a returning student's saved choice).
+   */
+  telegramLogin(initData: string, appLanguage?: Lang): Promise<AuthResult> {
+    return postJson<AuthResult>('/auth/telegram', {
+      init_data: initData,
+      ...(appLanguage ? { app_language: appLanguage } : {}),
+    });
   },
 
   /** DEV ONLY — bypasses Telegram, used for local runs until the URL is registered. */
@@ -133,6 +203,49 @@ export const api = {
     if (res.status === 404) throw new Error('no_content');
     if (!res.ok) throw new Error(`lesson failed: ${res.status}`);
     return res.json() as Promise<{ board_script: BoardScript; cached: boolean }>;
+  },
+
+  /**
+   * The shorter retest after a failed topic test (Part 04 §6). The server picks
+   * the questions from the student's own persisted misses plus the topic's
+   * variant pool — the client doesn't choose, and doesn't need to.
+   */
+  async retest(
+    session: string,
+    body: { topic_id: string; language: Lang },
+  ): Promise<{ quiz: QuizQuestion[]; retest_round: number }> {
+    const res = await fetchWithTimeout(
+      `${API_URL}/lessons/retest`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
+        body: JSON.stringify(body),
+      },
+      LESSON_TIMEOUT_MS,
+    );
+    if (!res.ok) throw new Error(`retest failed: ${res.status}`);
+    return res.json() as Promise<{ quiz: QuizQuestion[]; retest_round: number }>;
+  },
+
+  /**
+   * The check-in closing out a detour (Part 04 §13). A null question means the
+   * topic has nothing pooled yet — the board then returns without one.
+   */
+  async wrapUp(
+    session: string,
+    body: { topic_id: string; language: Lang },
+  ): Promise<{ question: QuizQuestion | null }> {
+    const res = await fetchWithTimeout(
+      `${API_URL}/lessons/wrap-up`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
+        body: JSON.stringify(body),
+      },
+      LESSON_TIMEOUT_MS,
+    );
+    if (!res.ok) throw new Error(`wrap-up failed: ${res.status}`);
+    return res.json() as Promise<{ question: QuizQuestion | null }>;
   },
 
   /**
@@ -271,6 +384,78 @@ export const api = {
     });
     if (!res.ok) throw new Error(`greeting failed: ${res.status}`);
     return ((await res.json()) as { variant: GreetingVariant }).variant;
+  },
+
+  /**
+   * Close the first meeting (Part 05 §7) — sent when the student finishes the
+   * get-to-know-you or skips it. Both end the meeting for good, so this is sent
+   * either way; a skip simply carries no answers.
+   */
+  async postProfile(session: string, answers: StudentProfile): Promise<void> {
+    await fetch(`${API_URL}/me/profile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
+      body: JSON.stringify({ answers }),
+    }).catch(() => {
+      // Best-effort. A lost answer set is a smaller harm than blocking a student
+      // at the door of their first lesson.
+    });
+  },
+
+  /**
+   * The greeting screen's line and its pre-generated clip (Part 07 §12 step 2).
+   *
+   * No synthesis happens behind this — the clips are built once by the server's
+   * `gen-greeting-clips` script — so the URL comes back immediately and playback
+   * starts on mount instead of after ~5s of live TTS.
+   *
+   * Returns null when the request fails; the screen then falls back to its own
+   * localized text and stays silent. A missing voice is a smaller harm than
+   * stalling a student at the door of their first lesson.
+   */
+  async getGreetingClip(session: string): Promise<GreetingClip | null> {
+    try {
+      const res = await fetch(`${API_URL}/me/greeting-clip`, {
+        headers: { Authorization: `Bearer ${session}` },
+      });
+      if (!res.ok) return null;
+      return (await res.json()) as GreetingClip;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Set the student's UI language (Part 07 §12). Asked as onboarding step 1,
+   * so this is a separate call rather than part of sign-in. Returns the updated
+   * user so the client doesn't have to guess what the server stored.
+   */
+  async setLanguage(session: string, language: Lang): Promise<UserDto> {
+    const res = await fetch(`${API_URL}/me/language`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
+      body: JSON.stringify({ language }),
+    });
+    if (!res.ok) throw new Error(`language failed: ${res.status}`);
+    return ((await res.json()) as { user: UserDto }).user;
+  },
+
+  /** Every tier with its counts, for the All Levels grid (Part 07 §9). */
+  async getLevels(session: string): Promise<LevelMap> {
+    const res = await fetch(`${API_URL}/levels`, {
+      headers: { Authorization: `Bearer ${session}` },
+    });
+    if (!res.ok) throw new Error(`levels failed: ${res.status}`);
+    return res.json() as Promise<LevelMap>;
+  },
+
+  /** One tier's topics in path order, plus where its screen opens (Part 07 §9). */
+  async getLevel(session: string, level: string): Promise<LevelDetail> {
+    const res = await fetch(`${API_URL}/levels/${encodeURIComponent(level)}`, {
+      headers: { Authorization: `Bearer ${session}` },
+    });
+    if (!res.ok) throw new Error(`level failed: ${res.status}`);
+    return res.json() as Promise<LevelDetail>;
   },
 
   async signOut(session: string): Promise<void> {

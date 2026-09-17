@@ -3,6 +3,8 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { api, type StudyPlan } from '../api/client';
 import { BoardHost } from '../board/BoardHost';
 import { BoardPrompt } from '../board/BoardPrompt';
+import { FirstMeeting } from '../board/FirstMeeting';
+import type { MeetingAnswers } from '../board/meeting';
 import { InputBar } from '../board/InputBar';
 import { decideAsk } from '../board/detour';
 import type { Beat, BoardScript } from '../board/types';
@@ -11,7 +13,7 @@ import { pickAndEncodeImage, type EncodedImage } from '../net/image';
 import { planGenFailure, type GenMessageKey } from '../board/genRetry';
 import { strings, type Lang } from '../i18n';
 
-type Phase = 'greeting' | 'lesson' | 'transition' | 'complete';
+type Phase = 'greeting' | 'meeting' | 'lesson' | 'transition' | 'complete';
 type ProgressPatch = {
   status?: 'started' | 'passed';
   quiz_score?: number | null;
@@ -56,8 +58,11 @@ export function PathBoardScreen({
   const [reexplain, setReexplain] = useState<{ nonce: number; beats: Beat[] } | null>(null);
   const [inputBusy, setInputBusy] = useState(false);
   const [inputNotice, setInputNotice] = useState<string | null>(null);
+  // 'reply' is Bixy talking (Part 05 §8); 'warn' is the board reporting a problem.
+  const [noticeTone, setNoticeTone] = useState<'warn' | 'reply'>('warn');
   // Bumping this re-runs the generation effect (an automatic or manual reload).
   const [reloadKey, setReloadKey] = useState(0);
+  const [retestRound, setRetestRound] = useState(0);
   const autoReloadsRef = useRef(0);
   const advancedFor = useRef<Set<string>>(new Set());
 
@@ -67,16 +72,24 @@ export function PathBoardScreen({
     autoReloadsRef.current = 0;
   }, [activeTopicId]);
 
-  // The greeting varies by recency (§8.12): full the first visit of a day, a
-  // short "welcome back" after. Fetched once on arrival.
+  // What happens on arrival (§8.12, Part 05 §7): a brand-new student meets Bixy
+  // first; after that the greeting varies by recency — full the first visit of a
+  // day, a short "welcome back" after. Fetched once on arrival.
   useEffect(() => {
     if (phase !== 'greeting' || !plan.current_topic_id) return;
     let active = true;
     (async () => {
       try {
         const variant = await api.postGreeting(session);
-        if (active) setGreeting(variant === 'short' ? t.welcomeBack(name ?? '') : t.greeting(name ?? ''));
+        if (!active) return;
+        if (variant === 'first_meeting') {
+          setPhase('meeting');
+          return;
+        }
+        setGreeting(variant === 'short' ? t.welcomeBack(name ?? '') : t.greeting(name ?? ''));
       } catch {
+        // A failed lookup falls back to the plain greeting, never to the meeting:
+        // re-introducing Bixy to someone it has already met is the worse miss.
         if (active) setGreeting(t.greeting(name ?? ''));
       }
     })();
@@ -87,13 +100,48 @@ export function PathBoardScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase === 'greeting']);
 
+  // Part 05 §7: finishing OR skipping ends the meeting for good. The answers go
+  // up best-effort — a lost answer set is a smaller harm than blocking a student
+  // at the door of their first lesson, which is why `postProfile` swallows its
+  // own failures.
+  //
+  // The phase then returns to 'greeting' on purpose. That is not a detour back
+  // through a screen already shown: it is the arrival prompt (§8.12) that the
+  // meeting displaced, and the greeting it re-fetches is the one the server
+  // withholds during `first_meeting` — `POST /me/greeting` deliberately does not
+  // stamp `last_greeted_at` for the meeting, so this call is what stamps it and
+  // makes the student's next visit today a "welcome back" instead of a second
+  // full greeting.
+  //
+  // What it must NOT do is race: that greeting call reads `met_at`, and
+  // `postProfile` is the write that sets it. Fired side by side (they were ~4ms
+  // apart in production) the read can beat the write, be told the meeting still
+  // hasn't happened, and drop the student straight back into the questions they
+  // just finished — which is exactly what the duplicated `/me/profile` +
+  // `/me/greeting` pairs in the logs were. Advancing only once the write has
+  // settled orders the two. A failed write settles too, so a student is never
+  // stranded on the last question; they just get asked again next visit.
+  const finishMeeting = useCallback(
+    (answers: MeetingAnswers) => {
+      // Optimistic, so the prompt isn't blank for the round trip; the greeting
+      // effect overwrites it with whatever the server actually returns.
+      setGreeting(t.greeting(name ?? ''));
+      void api.postProfile(session, answers).finally(() => setPhase('greeting'));
+    },
+    [session, name, t],
+  );
+
   const fetchResume = useCallback(
-    async (topicId: string): Promise<number | null> => {
+    async (topicId: string): Promise<{ beat: number | null; retestRound: number }> => {
       try {
         const record = (await api.getProgress(session)).find((p) => p.topic_id === topicId);
-        return record && record.status !== 'passed' ? record.last_completed_beat : null;
+        return {
+          beat: record && record.status !== 'passed' ? record.last_completed_beat : null,
+          // Carries §6's second-miss escalation across a session boundary.
+          retestRound: record?.retest_round ?? 0,
+        };
       } catch {
-        return null; // resume is best-effort; fall back to the top of the topic.
+        return { beat: null, retestRound: 0 }; // best-effort; fall back to the top.
       }
     },
     [session],
@@ -118,7 +166,8 @@ export function PathBoardScreen({
           fetchResume(topicId),
         ]);
         if (!active) return;
-        setResumeFromBeatId(resumeBeat);
+        setResumeFromBeatId(resumeBeat.beat);
+        setRetestRound(resumeBeat.retestRound);
         setScript(board_script);
       } catch (e) {
         if (!active) return;
@@ -168,6 +217,31 @@ export function PathBoardScreen({
     [session, activeTopicId, detour],
   );
 
+  // Part 04 §6: the shorter retest after a re-teach. Server-selected from the
+  // student's persisted misses plus the topic's variant pool; an empty result
+  // means nothing is stored yet, and the board falls back to the full test.
+  const requestRetest = useCallback(async () => {
+    if (!activeTopicId) return [];
+    try {
+      const { quiz } = await api.retest(session, { topic_id: activeTopicId, language });
+      return quiz;
+    } catch {
+      return [];
+    }
+  }, [session, activeTopicId, language]);
+
+  // Part 04 §13: the check-in that closes out a detour. Each call rotates past
+  // the last question served, so a wrong answer re-asks and gets a different one.
+  const requestWrapUp = useCallback(async () => {
+    if (!detour) return null;
+    try {
+      const { question } = await api.wrapUp(session, { topic_id: detour.topicId, language });
+      return question;
+    } catch {
+      return null; // no check-in is better than a stuck detour.
+    }
+  }, [session, detour, language]);
+
   // Leave a detour and return to the plan topic, resumed where the student left it.
   const returnToPlan = useCallback(() => {
     setDetour(null);
@@ -184,6 +258,7 @@ export function PathBoardScreen({
     async (input: { text?: string; image?: EncodedImage }) => {
       setInputBusy(true);
       setInputNotice(null);
+      setNoticeTone('warn');
       try {
         const result = await api.ask(session, {
           text: input.text,
@@ -196,6 +271,7 @@ export function PathBoardScreen({
           autoReloadsRef.current = 0;
           setReexplain(null);
           setResumeFromBeatId(null); // a fresh detour starts from the top
+          setRetestRound(0);
           setFailure(null);
           setScript(decision.boardScript);
           setDetour({ topicId: decision.topicId });
@@ -205,6 +281,11 @@ export function PathBoardScreen({
           setScript(decision.boardScript);
         } else if (decision.action === 'reexplain') {
           setReexplain((prev) => ({ nonce: (prev?.nonce ?? 0) + 1, beats: decision.beats }));
+        } else if (decision.action === 'identity') {
+          // Bixy answering what it is (Part 05 §8) — spoken back to the student,
+          // leaving the board exactly as it was. It's a reply, not a lesson.
+          setInputNotice(decision.text);
+          setNoticeTone('reply');
         } else {
           setInputNotice(t.askOffTopic);
         }
@@ -239,6 +320,10 @@ export function PathBoardScreen({
         </Pressable>
       </Centered>
     );
+  }
+
+  if (phase === 'meeting') {
+    return <FirstMeeting t={t} onDone={finishMeeting} />;
   }
 
   if (phase === 'greeting' || phase === 'transition') {
@@ -298,6 +383,20 @@ export function PathBoardScreen({
         <Text style={styles.backText}>{detour ? t.detourReturn : t.toYourPlan}</Text>
       </Pressable>
       <BoardHost
+        initialRetestRound={retestRound}
+        onRequestRetest={requestRetest}
+        detour={
+          detour
+            ? {
+                requestWrapUp,
+                // Auto-return (Part 04 §13). The manual control above stays as a
+                // fallback, but the normal path no longer depends on the student
+                // noticing it — not noticing it is what made interrupted topics
+                // look abandoned in the first place.
+                onComplete: returnToPlan,
+              }
+            : undefined
+        }
         // Remount on a topic switch (detour ↔ plan) so playback + resume restart cleanly.
         key={activeTopicId ?? 'none'}
         script={script}
@@ -313,7 +412,9 @@ export function PathBoardScreen({
         }}
         onProgress={handleProgress}
       />
-      {inputNotice ? <Text style={styles.notice}>{inputNotice}</Text> : null}
+      {inputNotice ? (
+        <Text style={[styles.notice, noticeTone === 'reply' && styles.noticeReply]}>{inputNotice}</Text>
+      ) : null}
       <InputBar
         placeholder={t.inputPlaceholder}
         attachLabel={t.attachPhoto}
@@ -335,6 +436,7 @@ const styles = StyleSheet.create({
   info: { color: '#98a2b3', fontSize: 15 },
   error: { color: '#ff6b6b', fontSize: 16, textAlign: 'center' },
   notice: { color: '#f0b429', fontSize: 14, textAlign: 'center', paddingHorizontal: 16, paddingBottom: 4 },
+  noticeReply: { color: '#e6e8ee', fontSize: 16, lineHeight: 22 },
   complete: { color: '#e6e8ee', fontSize: 24, textAlign: 'center', lineHeight: 32 },
   back: { position: 'absolute', top: 14, right: 18, zIndex: 1 },
   linkButton: { paddingVertical: 6 },
