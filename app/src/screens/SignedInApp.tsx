@@ -190,11 +190,11 @@ export function SignedInApp() {
   if (view === 'greeting') {
     return (
       <GreetingScreen
-        name={user?.name ?? null}
+        // The greeting is the same for everyone now: generic, name-free, and
+        // always self-introducing, so neither the profile name nor `met_at`
+        // feeds into it. Part 05 §7's five-question meeting still keys off
+        // `met_at` on the board, untouched.
         language={language}
-        // Bixy introduces itself here only if it hasn't already — the board's
-        // conversation is what stamps `met_at`, so this stays true until then.
-        firstMeeting={user?.metAt == null}
         session={session}
         onContinue={() => setView('levelcheck')}
       />

@@ -80,9 +80,7 @@ export function DevHomeScreen({ screen = 'home' }: { screen?: DevHomeScreenName 
   if (view === 'greeting') {
     return (
       <GreetingScreen
-        name="Fayzullo"
         language={lang}
-        firstMeeting
         session={null}
         onContinue={() => setView('reveal')}
       />

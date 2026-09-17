@@ -29,8 +29,8 @@ export interface AppDeps {
   studyPlan: StudyPlanService;
   /** The level map behind the home screen's level card and screens (Part 07 §9). */
   levels: LevelsService;
-  /** Narration provider (§9.1), reused directly for the greeting's spoken
-   *  audio (Part 07 §12 step 2) — a single short synthesis, not a lesson. */
+  /** Narration provider (§9.1). The greeting no longer goes through here — it
+   *  serves pre-generated clips (see modules/tts/greetingClips.ts). */
   tts: TtsClient;
   /** DEV-ONLY: mount the Telegram-bypass sign-in route. Off in production. */
   allowDevLogin?: boolean;

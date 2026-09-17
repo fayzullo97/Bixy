@@ -11,7 +11,8 @@
     "test": "vitest run",
     "migrate": "tsx src/db/migrate.ts",
     "seed": "tsx src/db/seed.ts",
-    "reset-student": "tsx src/scripts/reset-student.ts"
+    "reset-student": "tsx src/scripts/reset-student.ts",
+    "gen-greeting-clips": "tsx src/scripts/gen-greeting-clips.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",

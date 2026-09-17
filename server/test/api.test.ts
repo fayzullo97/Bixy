@@ -922,34 +922,46 @@ describe('greeting variant (§8.12, Part 05 §7)', () => {
   });
 });
 
-describe('greeting audio (Part 07 §12 step 2)', () => {
-  it('synthesizes the exact text the client sends, in the WAV bytes', async () => {
+describe('greeting clip (Part 07 §12 step 2)', () => {
+  it('returns a pre-generated clip URL and its text — no synthesis', async () => {
     const { app } = buildApp();
     const session = (await signIn(app)).body.session as string;
 
-    const res = await request(app)
-      .post('/me/greeting-audio')
-      .set('Authorization', `Bearer ${session}`)
-      .send({ text: 'Hi, Fayzullo' });
+    const res = await request(app).get('/me/greeting-clip').set('Authorization', `Bearer ${session}`);
 
     expect(res.status).toBe(200);
-    expect(res.headers['content-type']).toBe('audio/wav');
-    expect(res.body.length).toBeGreaterThan(44); // header + at least one sample
+    expect(typeof res.body.variant_id).toBe('string');
+    expect(typeof res.body.text).toBe('string');
+    expect(res.body.text.length).toBeGreaterThan(0);
+    // The clip lives at a stable public path keyed by language + variant id.
+    expect(res.body.audio_url).toContain(`/greeting/`);
+    expect(res.body.audio_url).toContain(`${res.body.variant_id}.wav`);
   });
 
-  it('rejects an empty or missing text', async () => {
+  it('carries no student name — the whole reason it can be pre-generated', async () => {
     const { app } = buildApp();
     const session = (await signIn(app)).body.session as string;
-    const res = await request(app)
-      .post('/me/greeting-audio')
+    const res = await request(app).get('/me/greeting-clip').set('Authorization', `Bearer ${session}`);
+    // `signIn` creates the fixture student; their name must not appear in the line.
+    expect(res.body.text).not.toContain('Fayzullo');
+  });
+
+  it('speaks the language the student chose', async () => {
+    const { app } = buildApp();
+    const session = (await signIn(app)).body.session as string;
+    await request(app)
+      .put('/me/language')
       .set('Authorization', `Bearer ${session}`)
-      .send({ text: '   ' });
-    expect(res.status).toBe(400);
+      .send({ language: 'ru' });
+
+    const res = await request(app).get('/me/greeting-clip').set('Authorization', `Bearer ${session}`);
+    expect(res.body.variant_id.startsWith('ru-')).toBe(true);
+    expect(res.body.audio_url).toContain('/greeting/ru/');
   });
 
   it('requires auth', async () => {
     const { app } = buildApp();
-    expect((await request(app).post('/me/greeting-audio')).status).toBe(401);
+    expect((await request(app).get('/me/greeting-clip')).status).toBe(401);
   });
 });
 

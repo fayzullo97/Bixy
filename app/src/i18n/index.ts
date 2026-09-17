@@ -18,6 +18,11 @@ interface Strings {
   openInTelegramBody: string;
   signingIn: string;
   greeting: (name: string) => string;
+  /** The arrival screen's spoken line (Part 07 §12 step 2). Name-free and
+   *  self-introducing, because it is served as a PRE-GENERATED clip — see the
+   *  server's `greetingClips.ts`. Used only as the fallback when that request
+   *  fails; normally the server sends the exact text of the clip it picked. */
+  greetingGeneric: string;
   /** Bixy's one-time self-introduction (Part 05 §7). Shown with the greeting
    *  (Part 07 §12 step 2) while the student has no `met_at` — it used to open
    *  the board's get-to-know-you, which now starts at the first question. */
@@ -97,6 +102,7 @@ export const strings: Record<Lang, Strings> = {
       'This app runs inside Telegram. Open it from the bot in Telegram to start learning.',
     signingIn: 'Signing you in…',
     greeting: (name) => `Hi, ${name} 👋`,
+    greetingGeneric: "Hi, I'm Bixy — I teach English grammar on a board.",
     bixyIntro:
       'I’m Bixy. I teach English grammar on a board: I’ll write, draw and talk you through a topic, and you can stop me any time to ask about it again.',
     greetingContinue: 'Tap to continue',
@@ -166,6 +172,7 @@ export const strings: Record<Lang, Strings> = {
       'Bu ilova Telegram ichida ishlaydi. O‘rganishni boshlash uchun uni Telegramdagi botdan oching.',
     signingIn: 'Tizimga kiritilmoqda…',
     greeting: (name) => `Salom, ${name} 👋`,
+    greetingGeneric: "Salom, men Bixy — doskada ingliz tili grammatikasini o'rgataman.",
     bixyIntro:
       'Men Bixy. Doskada ingliz tili grammatikasini o‘rgataman: mavzuni yozib, chizib va gapirib tushuntiraman, siz esa istagan payt to‘xtatib, qayta so‘rashingiz mumkin.',
     greetingContinue: 'Davom etish uchun bosing',
@@ -235,6 +242,7 @@ export const strings: Record<Lang, Strings> = {
       'Это приложение работает внутри Telegram. Откройте его через бота в Telegram, чтобы начать.',
     signingIn: 'Выполняется вход…',
     greeting: (name) => `Привет, ${name} 👋`,
+    greetingGeneric: 'Привет, я Бикси — объясняю английскую грамматику на доске.',
     bixyIntro:
       'Я Бикси. Я объясняю английскую грамматику на доске: пишу, рисую и рассказываю, а вы в любой момент можете остановить меня и спросить ещё раз.',
     greetingContinue: 'Нажмите, чтобы продолжить',

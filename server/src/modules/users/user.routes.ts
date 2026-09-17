@@ -3,7 +3,8 @@ import type { AppDeps } from '../../deps.js';
 import { requireAuth } from '../../middleware/requireAuth.js';
 import { toUserDto } from './user.dto.js';
 import { greetingStage } from '../study-plan/greeting.js';
-import { narrate } from '../tts/narrate.js';
+import { narrationPublicUrl } from '../tts/audioStore.js';
+import { greetingClipPath, pickGreetingVariant } from '../tts/greetingClips.js';
 import type { StudentProfile } from '../generation/persona.js';
 
 /** The get-to-know-you questions (Part 05 §7), in the order they're asked. */
@@ -97,36 +98,28 @@ export function userRoutes(deps: AppDeps): Router {
     res.json({ profile });
   });
 
-  // Speaks the onboarding greeting screen's line(s) (Part 07 §12 step 2) — the
-  // greeting itself, plus Bixy's introduction for a first-time student. Text is
-  // exactly what the screen displays: the client owns that copy (chrome, not
-  // lesson content, same split as everywhere else in the app), including the
-  // student's own name, which the server has no template for. Capped at 500
-  // chars — comfortably more than the longest greeting+intro in any language —
-  // so an authed session can't turn this into an open-ended TTS relay; the
-  // remaining cost exposure is accepted the same way `/lessons` already accepts
-  // it for any authed student.
-  router.post('/greeting-audio', requireAuth(deps.session), async (req, res) => {
-    const text = (req.body as { text?: unknown })?.text;
-    if (typeof text !== 'string' || text.trim().length === 0) {
-      res.status(400).json({ error: 'text (string) is required' });
-      return;
-    }
-    if (!deps.tts.enabled) {
-      // No provider key configured — the client falls back to silent, same as
-      // a lesson beat with no audio_url. Not an error; just nothing to play.
-      res.status(404).json({ error: 'tts_unavailable' });
-      return;
-    }
+  // The onboarding greeting screen's line (Part 07 §12 step 2), as text plus a
+  // URL to a PRE-GENERATED clip. This used to synthesize on every arrival, which
+  // cost ~5s of silence before Bixy spoke — the student's first impression of the
+  // product was a dead screen. The text is fixed and carries no student name, so
+  // there was never anything per-visit to synthesize: the clips are built once by
+  // `src/scripts/gen-greeting-clips.ts` and this just names one.
+  //
+  // Text and audio come from the SAME record, so the screen cannot drift out of
+  // sync with what is spoken — the client no longer holds its own copy of this
+  // string. No TTS call happens here, so there is also nothing left to rate-limit.
+  router.get('/greeting-clip', requireAuth(deps.session), async (req, res) => {
     const user = await deps.users.get(req.telegramId!);
-    try {
-      const result = await narrate(deps.tts, text.trim().slice(0, 500), user?.app_language ?? 'en');
-      res.set('Content-Type', 'audio/wav');
-      res.send(result.wav);
-    } catch (error) {
-      console.error('[tts] greeting audio failed:', (error as Error).message);
-      res.status(502).json({ error: 'tts_failed' });
-    }
+    const language = user?.app_language ?? 'en';
+    const variant = pickGreetingVariant(language);
+    res.json({
+      variant_id: variant.id,
+      text: variant.text,
+      // Always a URL, even if the clip was never generated: the client already
+      // treats a failed load as "play nothing" (see playNarration's error path),
+      // and a 404 on the audio is a smaller harm than blocking the screen.
+      audio_url: narrationPublicUrl(greetingClipPath(language, variant.id)),
+    });
   });
 
   return router;

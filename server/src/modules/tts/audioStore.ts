@@ -28,3 +28,16 @@ export async function uploadNarration(
   if (error) throw error;
   return db.storage.from(env.NARRATION_BUCKET).getPublicUrl(path).data.publicUrl;
 }
+
+/**
+ * Public URL for an already-uploaded narration path.
+ *
+ * Built from `SUPABASE_URL` rather than through a `SupabaseClient`, so callers
+ * that only need to NAME a clip (the greeting route) don't have to hold a
+ * database handle for what is pure string work. This is the same shape
+ * `getPublicUrl` returns for a public bucket.
+ */
+export function narrationPublicUrl(path: string): string {
+  const base = env.SUPABASE_URL.replace(/\/+$/, '');
+  return `${base}/storage/v1/object/public/${env.NARRATION_BUCKET}/${path}`;
+}

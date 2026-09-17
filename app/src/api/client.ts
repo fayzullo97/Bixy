@@ -140,6 +140,15 @@ async function postJson<T>(path: string, body: unknown, session?: string): Promi
   return (await res.json()) as T;
 }
 
+/** The greeting screen's line and its pre-generated audio (Part 07 §12 step 2).
+ *  `text` is what the screen shows AND what the clip says — one source, so the
+ *  two cannot drift. */
+export interface GreetingClip {
+  variant_id: string;
+  text: string;
+  audio_url: string;
+}
+
 export const api = {
   /** Restore a persisted session on load (§8.8). */
   async me(session: string): Promise<UserDto> {
@@ -394,26 +403,23 @@ export const api = {
   },
 
   /**
-   * Speaks the greeting screen's text (Part 07 §12 step 2) — exactly the string
-   * already on screen, so what's said always matches what's shown. Returns a
-   * playable blob URL, or null when there's nothing to play: off-web (native
-   * has no `Blob`/`Audio` path here, matching `playNarration`'s own web-only
-   * gate), no TTS provider configured server-side, or the request itself
-   * failed. Every case is a silent skip, never a blocking error — a missing
-   * voice is a smaller harm than stalling a student at the door of their
-   * first lesson.
+   * The greeting screen's line and its pre-generated clip (Part 07 §12 step 2).
+   *
+   * No synthesis happens behind this — the clips are built once by the server's
+   * `gen-greeting-clips` script — so the URL comes back immediately and playback
+   * starts on mount instead of after ~5s of live TTS.
+   *
+   * Returns null when the request fails; the screen then falls back to its own
+   * localized text and stays silent. A missing voice is a smaller harm than
+   * stalling a student at the door of their first lesson.
    */
-  async getGreetingAudio(session: string, text: string): Promise<string | null> {
-    if (Platform.OS !== 'web') return null;
+  async getGreetingClip(session: string): Promise<GreetingClip | null> {
     try {
-      const res = await fetch(`${API_URL}/me/greeting-audio`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` },
-        body: JSON.stringify({ text }),
+      const res = await fetch(`${API_URL}/me/greeting-clip`, {
+        headers: { Authorization: `Bearer ${session}` },
       });
       if (!res.ok) return null;
-      const blob = await res.blob();
-      return URL.createObjectURL(blob);
+      return (await res.json()) as GreetingClip;
     } catch {
       return null;
     }
